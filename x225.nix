@@ -6,6 +6,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
       /etc/nixos/hardware-configuration.nix
       "${builtins.fetchGit { url = "https://github.com/NixOS/nixos-hardware.git"; }}/lenovo/thinkpad/x230"
       "${builtins.fetchGit { url = "https://github.com/NixOS/nixos-hardware.git"; }}/common/pc/hdd"
+      ./common.nix
     ];
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
   boot.kernelPackages = pkgs.linuxPackages_5_10;
@@ -37,8 +38,6 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hicolor-icon-theme gnome3.adwaita-icon-theme gtk-engine-murrine gtk_engines gsettings-desktop-schemas lxappearance
   ];
   environment.variables = {
-    EDITOR = "nvim";
-    VISUAL = "nvim";
     GTK_THEME = "Adwaita-dark";
     RUST_SRC_PATH = ''${pkgs.stdenv.mkDerivation {
       inherit (pkgs.rustc) src;

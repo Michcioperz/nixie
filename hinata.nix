@@ -1,13 +1,10 @@
 { config, pkgs, ... }:
 let secrets = (import /etc/nixos/secrets.nix); in
 {
-  nixpkgs.overlays = [
-    (import ./overlay/default.nix)
-  ];
-
   imports =
     [
       /etc/nixos/hardware-configuration.nix
+      ./common.nix
     ];
 
   # Use the systemd-boot EFI boot loader.
@@ -65,10 +62,6 @@ let secrets = (import /etc/nixos/secrets.nix); in
   environment.systemPackages = with pkgs; [
     wget neovim htop git tmux
   ];
-  environment.variables = {
-    EDITOR = "nvim";
-    VISUAL = "nvim";
-  };
 
   services.openssh.enable = true;
   services.openssh.permitRootLogin = "prohibit-password";
