@@ -33,7 +33,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     pass pass-otp git gnupg lutris
     ncspot mpv youtube-dl strawberryProprietary
     quasselClient tdesktop mumble pavucontrol
-    firefoxNoGtkTheme libreoffice transmission-remote-gtk
+    firefoxNoGtkTheme libreoffice transmission-qt
     antibody workrave cargo-edit gimp
     hicolor-icon-theme gnome3.adwaita-icon-theme gtk-engine-murrine gtk_engines gsettings-desktop-schemas lxappearance
   ];
@@ -122,6 +122,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     builders-use-substitutes = true
   '';
   nix.trustedUsers = [ "root" "builder" "michcioperz" ];
+  nix.useSandbox = true;
   nixpkgs.config.allowUnfree = true;
   programs.bandwhich.enable = true;
   programs.dconf.enable = true;
