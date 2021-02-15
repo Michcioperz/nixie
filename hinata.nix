@@ -85,6 +85,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   services.prometheus.exporters.node = {
     enable = true;
     openFirewall = true;
+    enabledCollectors = [ "systemd" ];
   };
 
   containers.nginx2 = {
@@ -104,6 +105,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
       #"/nsu" = { hostPath = "/home/michcioperz/nsu"; isReadOnly = true; };
     };
     config = { config, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       environment.etc."tank_ca.crt".text = builtins.readFile "/etc/tank_ca.crt";
       security.acme.email = "acme.hinata@iscute.ovh";
       security.acme.acceptTerms = true;
@@ -267,6 +273,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hostBridge = "br0";
     autoStart = true;
     config = { config, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       services.prometheus = {
         enable = true;
         port = 9090;
@@ -286,7 +297,23 @@ let secrets = (import /etc/nixos/secrets.nix); in
           }
           {
             job_name = "node";
-            static_configs = [ { targets = [ "192.168.7.1:9100" ]; } ];
+            static_configs = [ { targets = [
+              "192.168.7.1:9100"
+              "192.168.7.2:9100"
+              "192.168.7.3:9100"
+              "192.168.7.4:9100"
+              "192.168.7.5:9100"
+              "192.168.7.6:9100"
+              "192.168.7.7:9100"
+              "192.168.7.9:9100"
+              "192.168.7.11:9100"
+              "192.168.7.12:9100"
+              "192.168.7.13:9100"
+              "192.168.7.15:9100"
+              "192.168.7.18:9100"
+              "192.168.7.19:9100"
+              "192.168.7.20:9100"
+            ]; } ];
           }
           {
             job_name = "postgres";
@@ -340,6 +367,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hostBridge = "br0";
     autoStart = true;
     config = { config, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       services.grafana = {
         enable = true;
         addr = "0.0.0.0";
@@ -359,6 +391,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hostBridge = "br0";
     autoStart = true;
     config = { config, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       services.postgresql = {
         enable = true;
         package = pkgs.postgresql_11;
@@ -394,6 +431,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hostBridge = "br0";
     autoStart = true;
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       services.miniflux = {
         enable = true;
         config = lib.mkForce {
@@ -428,6 +470,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hostBridge = "br0";
     autoStart = true;
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       environment.etc."ipmi_exporter.yml" = {
         text = ''{"modules": {"default": { "user": "${secrets.ipmi.user}", "pass": "${secrets.ipmi.pass}", "privilege": "user", "driver": "LAN_2_0", "collectors": ["bmc", "ipmi", "chassis"]}}}'';
       };
@@ -488,6 +535,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
       "/stagit" = { hostPath = "/home/michcioperz/stagit"; isReadOnly = false; };
     };
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.9"; prefixLength = 24; } ];
       systemd.services = lib.foldl' (x: y: x // y) {} (map (repoName: {
         "rustagit-${repoName}" = {
@@ -573,6 +625,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
       { containerPort = 1883; hostPort = 1883; protocol = "tcp"; }
     ];
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       services.mosquitto = {
         enable = true;
         checkPasswords = true;
@@ -616,6 +673,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
       "/tank" = { hostPath = "/tank"; isReadOnly = true; };
     };
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.12"; prefixLength = 24; } ];
       networking.defaultGateway = "192.168.7.1";
       networking.nameservers = ["1.1.1.1"];
@@ -678,6 +740,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hostBridge = "br0";
     autoStart = true;
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.13"; prefixLength = 24; } ];
       networking.defaultGateway = "192.168.7.1";
       networking.nameservers = ["1.1.1.1"];
@@ -718,6 +785,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hostBridge = "br0";
     autoStart = true;
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.15"; prefixLength = 24; } ];
       networking.firewall.allowedTCPPorts = [ 6667 ];
       networking.defaultGateway = "192.168.7.1";
@@ -799,6 +871,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hostBridge = "br0";
     autoStart = true;
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.18"; prefixLength = 24; } ];
       networking.firewall.allowedTCPPorts = [ 8000 ];
       networking.defaultGateway = "192.168.7.1";
@@ -825,6 +902,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     hostBridge = "br0";
     autoStart = true;
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.19"; prefixLength = 24; } ];
       networking.defaultGateway = "192.168.7.1";
       networking.nameservers = ["1.1.1.1"];
@@ -847,6 +929,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
       { containerPort = 8086; hostPort = 8086; protocol = "tcp"; }
     ];
     config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
       networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.20"; prefixLength = 24; } ];
       networking.defaultGateway = "192.168.7.1";
       networking.nameservers = ["1.1.1.1"];
