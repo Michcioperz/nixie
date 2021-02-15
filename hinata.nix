@@ -120,6 +120,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
         recommendedGzipSettings = true;
         recommendedTlsSettings = true;
         recommendedOptimisation = true;
+        statusPage = true;
         appendHttpConfig = ''proxy_cache_path /var/cache/nginx/radyj levels=1:2 keys_zone=radyj:10m;'';
         virtualHosts = {
           "www.metro.bieszczady.pl" = {
