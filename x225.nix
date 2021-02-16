@@ -35,7 +35,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     ncspot mpv youtube-dl strawberryProprietary
     quasselClient tdesktop mumble pavucontrol
     firefoxNoGtkTheme libreoffice transmission-qt
-    antibody workrave cargo-edit gimp
+    antibody workrave cargo-edit gimp pulseaudio
     hicolor-icon-theme gnome3.adwaita-icon-theme gtk-engine-murrine gtk_engines gsettings-desktop-schemas lxappearance
   ];
   environment.variables = {
