@@ -16,6 +16,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     useOSProber = true;
   };
   boot.plymouth.enable = true;
+  boot.supportedFilesystems = [ "cifs" ];
   console.keyMap = "pl";
   console.colors = [ "184956" "fa5750" "75b938" "dbb32d" "4695f7" "f275be" "41c7b9" "72898f" "2d5b69" "ff665c" "84c747" "ebc13d" "58a3ff" "ff84cd" "53d6c7" "cad8d9" ];
   documentation.dev.enable = true;
@@ -72,7 +73,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   i18n.defaultLocale = "en_GB.UTF-8";
   location.latitude = 52.;
   location.longitude = 21.;
-  networking.firewall.allowedTCPPorts = [ 8000 8001 ];
+  networking.firewall.allowedTCPPorts = [ 8000 8001 9091 ];
   networking.hostName = "x225";
   networking.useDHCP = false;
   #networking.nat = {
