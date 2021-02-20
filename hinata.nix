@@ -89,6 +89,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
 
   containers.nginx2 = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     forwardPorts = [
@@ -270,6 +271,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
 
   containers.prometheus = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -364,6 +366,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
 
   containers.grafana = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -388,6 +391,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
 
   containers.postgres = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -428,6 +432,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
 
   containers.miniflux = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -467,6 +472,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
 
   containers.ipmiprom = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -501,6 +507,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
 
   #containers.hydra = {
+  # timeoutStartSec = "2min";
   #  privateNetwork = true;
   #  hostBridge = "br0";
   #  autoStart = true;
@@ -528,6 +535,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   #};
 
   containers.stagit = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -556,6 +564,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
 
   #containers.sccache = {
+  #  timeoutStartSec = "2min";
   #  privateNetwork = true;
   #  hostBridge = "br0";
   #  autoStart = false;
@@ -619,9 +628,10 @@ let secrets = (import /etc/nixos/secrets.nix); in
   #};
 
   containers.mqtt = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
-    autoStart = false;
+    autoStart = true;
     forwardPorts = [
       { containerPort = 1883; hostPort = 1883; protocol = "tcp"; }
     ];
@@ -664,6 +674,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
 
   containers.rns = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -737,6 +748,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     };
   };
   containers.scoobideria = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -761,6 +773,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     };
   };
   #containers.grocy = {
+  #  timeoutStartSec = "2min";
   #  privateNetwork = true;
   #  hostBridge = "br0";
   #  autoStart = true;
@@ -782,6 +795,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   #  };
   #};
   containers.bitlbee = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -806,6 +820,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     };
   };
   # containers.bookwyrm = {
+  #   timeoutStartSec = "2min";
   #   privateNetwork = true;
   #   hostBridge = "br0";
   #   autoStart = true;
@@ -846,6 +861,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
 
   #nixpkgs.config.allowUnfree = true;
   #containers.teamfo = {
+  #  timeoutStartSec = "2min";
   #  privateNetwork = true;
   #  hostBridge = "br0";
   #  autoStart = true;
@@ -868,6 +884,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   #};
 
   containers.honk = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -899,6 +916,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     };
   };
   containers.radyj = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
@@ -923,6 +941,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     };
   };
   containers.influxdb = {
+    timeoutStartSec = "2min";
     privateNetwork = true;
     hostBridge = "br0";
     autoStart = true;
