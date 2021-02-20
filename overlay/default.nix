@@ -39,4 +39,5 @@ self: super:
   vim-selenized = super.callPackage ./vim-selenized.nix { };
   neovim-m314 = super.callPackage ./vimrc.nix { };
   i3spin = super.callPackage ./i3spin.nix { };
+  nncp = super.callPackage ./nncp.nix {};
 }
