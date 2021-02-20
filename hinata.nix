@@ -60,7 +60,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   nix.trustedUsers = [ "root" "builder" ];
 
   environment.systemPackages = with pkgs; [
-    wget neovim htop git tmux
+    wget neovim htop git tmux nncp
   ];
 
   services.openssh.enable = true;
