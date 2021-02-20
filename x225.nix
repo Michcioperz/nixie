@@ -31,11 +31,11 @@ let secrets = (import /etc/nixos/secrets.nix); in
     mupdf pcmanfm xarchiver
     python3 nodejs rustc cargo rustfmt direnv
     lsd ripgrep tokei fd bat gitAndTools.delta httplz
-    pass pass-otp git gnupg lutris
+    pass pass-otp git gnupg lutris watchman
     ncspot mpv youtube-dl strawberryProprietary
     quasselClient tdesktop mumble pavucontrol
     firefoxNoGtkTheme libreoffice transmission-qt
-    antibody workrave cargo-edit gimp pulseaudio
+    antibody workrave cargo-edit gimp pulseaudio feh ffmpeg
     hicolor-icon-theme gnome3.adwaita-icon-theme gtk-engine-murrine gtk_engines gsettings-desktop-schemas lxappearance
   ];
   environment.variables = {
@@ -73,7 +73,8 @@ let secrets = (import /etc/nixos/secrets.nix); in
   i18n.defaultLocale = "en_GB.UTF-8";
   location.latitude = 52.;
   location.longitude = 21.;
-  networking.firewall.allowedTCPPorts = [ 8000 8001 9091 ];
+  networking.firewall.allowedTCPPorts = [ 8000 8001 9091 51413 ];
+  networking.firewall.allowedUDPPorts = [ 51413 ];
   networking.hostName = "x225";
   networking.useDHCP = false;
   #networking.nat = {
