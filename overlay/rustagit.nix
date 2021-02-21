@@ -5,9 +5,9 @@ rustPlatform.buildRustPackage rec {
   src = fetchgit {
     url = "https://git.hinata.iscute.ovh/rustagit/";
     rev = "refs/heads/main";
-    sha256 = "0mwjqwh73v8i8iykxyhdxjqfsd5x9a5irj60pxjcknbff4ipd1b0";
+    sha256 = "0y43kmlq7yby6x17bfd2pkfdkxc5l6g4mnxaa7dfxkxf1r932r3f";
   };
-  cargoSha256 = "05wv89sm2zx8jd93fv23nyjn7c01qfamzkclcxf00f0bgfg0flmb";
+  cargoSha256 = "0kblrczf4lq4hjyzwvr7ghv1c17sb7knx4clinh4x6dyg8yd1797";
   meta = with lib; {
     description = "static git browser generator";
     homepage = "https://git.hinata.iscute.ovh/rustagit/";
