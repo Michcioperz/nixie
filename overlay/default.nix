@@ -26,6 +26,13 @@ self: super:
     withPulseAudio = true;
     withMPRIS = true;
   };
+  ncspot-git = super.callPackage ./ncspot-git.nix {
+    withALSA = false;
+    withPulseAudio = true;
+    withMPRIS = true;
+    withNotify = true;
+    withShareClipboard = true;
+  };
   overpass-nerdfont = super.nerdfonts.override { fonts = ["Overpass"]; };
   fantasque-nerdfont = super.nerdfonts.override { fonts = ["FantasqueSansMono"]; };
 

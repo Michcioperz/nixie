@@ -32,7 +32,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     python3 nodejs rustc cargo rustfmt direnv
     lsd ripgrep tokei fd bat gitAndTools.delta httplz
     pass pass-otp git gnupg lutris watchman
-    ncspot mpv youtube-dl strawberryProprietary
+    ncspot-git mpv youtube-dl strawberryProprietary
     quasselClient tdesktop mumble pavucontrol
     firefoxNoGtkTheme libreoffice transmission-qt
     antibody workrave cargo-edit gimp pulseaudio feh ffmpeg git-cola gnome3.meld
