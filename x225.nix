@@ -49,10 +49,10 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
   fonts = {
     fonts = with pkgs; [
-      overpass-nerdfont overpass merriweather lato comic-relief
+      fantasque-nerdfont overpass-nerdfont overpass merriweather lato comic-relief
     ];
     fontconfig.defaultFonts = {
-      monospace = ["OverpassMono Nerd Font"];
+      monospace = ["FantasqueSansMono Nerd Font"];
       sansSerif = ["Overpass"];
       serif = ["Merriweather"];
     };

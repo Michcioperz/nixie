@@ -27,6 +27,7 @@ self: super:
     withMPRIS = true;
   };
   overpass-nerdfont = super.nerdfonts.override { fonts = ["Overpass"]; };
+  fantasque-nerdfont = super.nerdfonts.override { fonts = ["FantasqueSansMono"]; };
 
   ipmi-exporter = super.callPackage ./ipmi-exporter.nix { };
   meekchoppes = super.callPackage ./meekchoppes.nix { };
