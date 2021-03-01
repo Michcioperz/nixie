@@ -9,5 +9,6 @@ stdenv.mkDerivation rec {
   phases = "installPhase";
   installPhase = ''
     install -Dm755 $src $out/bin/meilisearch
+    patchelf --interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/meilisearch
   '';
 }

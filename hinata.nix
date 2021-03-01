@@ -133,6 +133,16 @@ let secrets = (import /etc/nixos/secrets.nix); in
               proxyPass = "http://192.168.7.12:8000";
             };
           };
+	  "nixpkgs.hinata.iscute.ovh" = {
+	    enableACME = true;
+	    forceSSL = true;
+	    locations."/indexes" = {
+	      proxyPass = "http://192.168.7.21:7700";
+	    };
+	    locations."/" = {
+	      root = "/tank/nixpkgs-ui";
+	    };
+	  };
           "0x7f.one" = {
             enableACME = true;
             forceSSL = true;
@@ -316,6 +326,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
               "192.168.7.18:9100"
               "192.168.7.19:9100"
               "192.168.7.20:9100"
+              "192.168.7.21:9100"
             ]; } ];
           }
           {
@@ -977,6 +988,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
       networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.21"; prefixLength = 24; } ];
       networking.defaultGateway = "192.168.7.1";
       #networking.nameservers = ["1.1.1.1"];
+      networking.firewall.allowedTCPPorts = [ 7700 ];
       systemd.services.meilisearch = {
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
