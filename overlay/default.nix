@@ -48,4 +48,5 @@ self: super:
   neovim-m314 = super.callPackage ./vimrc.nix { };
   i3spin = super.callPackage ./i3spin.nix { };
   nncp = super.callPackage ./nncp.nix {};
+  meilisearch = super.callPackage ./meilisearch.nix {};
 }
