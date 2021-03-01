@@ -44,7 +44,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     pass pass-otp git gnupg lutris watchman
     ncspot-git mpv youtube-dl strawberryProprietary
     quasselClient tdesktop mumble pavucontrol
-    firefoxNoGtkTheme libreoffice transmission-qt
+    firefoxNoGtkTheme libreoffice transmission-qt thunderbird
     antibody workrave cargo-edit gimp pulseaudio feh ffmpeg git-cola gnome3.meld
     hicolor-icon-theme gnome3.adwaita-icon-theme gtk-engine-murrine gtk_engines gsettings-desktop-schemas lxappearance
   ];
