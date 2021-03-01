@@ -963,5 +963,34 @@ let secrets = (import /etc/nixos/secrets.nix); in
       };
     };
   };
+  containers.meili = {
+    timeoutStartSec = "2min";
+    privateNetwork = true;
+    hostBridge = "br0";
+    autoStart = true;
+    config = { config, lib, pkgs, ... }: {
+      services.prometheus.exporters.node = {
+        enable = true;
+        openFirewall = true;
+        enabledCollectors = [ "systemd" ];
+      };
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.21"; prefixLength = 24; } ];
+      networking.defaultGateway = "192.168.7.1";
+      #networking.nameservers = ["1.1.1.1"];
+      systemd.services.meilisearch = {
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          Restart = "always";
+          RestartSec = "15";
+	  User = "meilisearch";
+          StateDirectory = ["meilisearch"];
+          ExecStart = ''${pkgs.meilisearch-bin}/bin/meilisearch --db-path /var/lib/meilisearch --http-addr 0.0.0.0:7700 --master-key ${secrets.meilisearch.masterKey} --env production'';
+        };
+      };
+      users.users.meilisearch = {
+        home = "/var/lib/meilisearch";
+      };
+    };
+  };
 }
 
