@@ -1,5 +1,47 @@
 { config, pkgs, ... }:
-let secrets = (import /etc/nixos/secrets.nix); in
+let
+  secrets = (import /etc/nixos/secrets.nix);
+  commons = {
+    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "ipmiprom" "stagit" "mqtt" "rns" "scoobideria" "bitlbee" "honk" "radyj" "influxdb" "meili" ];
+    ips = {
+      gateway     = "192.168.7.1";
+      nginx       = "192.168.7.2";
+      prometheus  = "192.168.7.3";
+      grafana     = "192.168.7.4";
+      postgres    = "192.168.7.5";
+      miniflux    = "192.168.7.6";
+      ipmiprom    = "192.168.7.7";
+      hydra       = "192.168.7.8";
+      stagit      = "192.168.7.9";
+      sccache     = "192.168.7.10";
+      mqtt        = "192.168.7.11";
+      rns         = "192.168.7.12";
+      scoobideria = "192.168.7.13";
+      grocy       = "192.168.7.14";
+      bitlbee     = "192.168.7.15";
+      teamfo      = "192.168.7.16";
+      bookwyrm    = "192.168.7.17";
+      honk        = "192.168.7.18";
+      radyj       = "192.168.7.19";
+      influxdb    = "192.168.7.20";
+      meili       = "192.168.7.21";
+    };
+  };
+  baseContainer = {
+    timeoutStartSec = "2min";
+    privateNetwork = true;
+    hostBridge = "br0";
+    autoStart = true;
+  };
+  baseContainerConfig = {
+    networking.defaultGateway = commons.ips.gateway;
+    services.prometheus.exporters.node = {
+      enable = true;
+      openFirewall = true;
+      enabledCollectors = [ "systemd" ];
+    };
+  };
+in
 {
   imports =
     [
@@ -37,7 +79,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   networking.nat.externalInterface = "eno1";
 
   networking.bridges.br0 = { interfaces = []; };
-  networking.interfaces.br0 = { ipv4.addresses = [ { address = "192.168.7.1"; prefixLength = 24; } ]; };
+  networking.interfaces.br0 = { ipv4.addresses = [ { address = "${commons.ips.gateway}"; prefixLength = 24; } ]; };
 
   i18n.defaultLocale = "en_GB.UTF-8";
   console = {
@@ -88,16 +130,12 @@ let secrets = (import /etc/nixos/secrets.nix); in
     enabledCollectors = [ "systemd" ];
   };
 
-  containers.nginx2 = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
+  containers.nginx2 = baseContainer // {
     forwardPorts = [
       { containerPort = 80; hostPort = 80; protocol = "tcp"; }
       { containerPort = 443; hostPort = 443; protocol = "tcp"; }
       { containerPort = 6697; hostPort = 6697; protocol = "tcp"; }
     ];
-    autoStart = true;
     bindMounts = {
       "/git" = { hostPath = "/home/michcioperz/git"; isReadOnly = true; };
       "/radyj-public" = { hostPath = "/home/michcioperz/radyj-public"; isReadOnly = true; };
@@ -105,12 +143,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
       "/tank" = { hostPath = "/tank"; isReadOnly = true; };
       #"/nsu" = { hostPath = "/home/michcioperz/nsu"; isReadOnly = true; };
     };
-    config = { config, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
+    config = { config, pkgs, ... }: baseContainerConfig // {
       environment.etc."tank_ca.crt".text = builtins.readFile "/etc/tank_ca.crt";
       security.acme.email = "acme.hinata@iscute.ovh";
       security.acme.acceptTerms = true;
@@ -130,14 +163,14 @@ let secrets = (import /etc/nixos/secrets.nix); in
             basicAuth = { "comfy" = secrets.icecast.comfyPassword; };
             locations."/" = {
               extraConfig = ''proxy_pass_header Authorization;'';
-              proxyPass = "http://192.168.7.12:8000";
+              proxyPass = "http://${commons.ips.rns}:8000";
             };
           };
 	  "nixpkgs.hinata.iscute.ovh" = {
 	    enableACME = true;
 	    forceSSL = true;
 	    locations."/indexes" = {
-	      proxyPass = "http://192.168.7.21:7700";
+	      proxyPass = "http://${commons.ips.meili}:7700";
 	    };
 	    locations."/" = {
 	      root = "/tank/nixpkgs-ui";
@@ -164,7 +197,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
             enableACME = true;
             forceSSL = true;
             locations."/" = {
-              proxyPass = "http://192.168.7.4:3000";
+              proxyPass = "http://${commons.ips.grafana}:3000";
             };
           };
           "radyj.hinata.iscute.ovh" = {
@@ -174,7 +207,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
               root = "/radyj-public";
             };
             locations."/api" = {
-              proxyPass = "http://192.168.7.19:8000";
+              proxyPass = "http://${commons.ips.radyj}:8000";
               extraConfig = ''add_header Cache-Control "public, immutable, max-age=3600"; proxy_cache radyj; proxy_cache_lock on; proxy_cache_revalidate off; proxy_cache_valid 1h;'';
             };
           };
@@ -182,14 +215,14 @@ let secrets = (import /etc/nixos/secrets.nix); in
             enableACME = true;
             forceSSL = true;
             locations."/" = {
-              proxyPass = "http://192.168.7.18:8000";
+              proxyPass = "http://${commons.ips.honk}:8000";
             };
           };
           "miniflux.hinata.iscute.ovh" = {
             enableACME = true;
             forceSSL = true;
             locations."/" = {
-              proxyPass = "http://192.168.7.6:8080";
+              proxyPass = "http://${commons.ips.miniflux}:8080";
             };
           };
           #"mqtt.hinata.iscute.ovh" = {
@@ -197,7 +230,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
           #  forceSSL = true;
           #  http2 = false;
           #  locations."/" = {
-          #    proxyPass = "http://192.168.7.11:15675";
+          #    proxyPass = "http://${commons.ips.mqtt}:15675";
           #    proxyWebsockets = true;
           #  };
           #};
@@ -205,14 +238,14 @@ let secrets = (import /etc/nixos/secrets.nix); in
           #  enableACME = true;
           #  forceSSL = true;
           #  locations."/" = {
-          #    proxyPass = "http://192.168.7.8:3000";
+          #    proxyPass = "http://${commons.ips.hydra}:3000";
           #  };
           #};
           #"grocy.hinata.iscute.ovh" = {
           #  enableACME = true;
           #  forceSSL = true;
           #  locations."/" = {
-          #    proxyPass = "http://192.168.7.14:80";
+          #    proxyPass = "http://${commons.ips.grocy}:80";
           #  };
           #};
           "git.hinata.iscute.ovh" = {
@@ -247,7 +280,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
         appendConfig = let cfg = config.services.nginx; in ''
           stream {
             upstream bitlbee {
-              server 192.168.7.15:6667 max_fails=3 fail_timeout=10s;
+              server ${commons.ips.bitlbee}:6667 max_fails=3 fail_timeout=10s;
             }
             server {
               listen 6697 ssl;
@@ -274,29 +307,19 @@ let secrets = (import /etc/nixos/secrets.nix); in
         openFirewall = true;
       };
       networking.firewall.allowedTCPPorts = [ 80 443 6697 ];
-      networking.defaultGateway = "192.168.7.1";
       networking.nameservers = ["1.1.1.1"];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.2"; prefixLength = 24; } ];
+      networking.interfaces.eth0.ipv4.addresses = [ { address = commons.ips.nginx; prefixLength = 24; } ];
     };
   };
 
-  containers.prometheus = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
+  containers.prometheus = baseContainer // {
+    config = { config, ... }: baseContainerConfig // {
       services.prometheus = {
         enable = true;
         port = 9090;
         remoteWrite = [
           {
-            url = "http://192.168.7.20:8086/api/v1/prom/write?db=prometheus";
+            url = "http://${commons.ips.influxdb}:8086/api/v1/prom/write?db=prometheus";
           }
         ];
         scrapeConfigs = [
@@ -310,32 +333,15 @@ let secrets = (import /etc/nixos/secrets.nix); in
           }
           {
             job_name = "node";
-            static_configs = [ { targets = [
-              "192.168.7.1:9100"
-              "192.168.7.2:9100"
-              "192.168.7.3:9100"
-              "192.168.7.4:9100"
-              "192.168.7.5:9100"
-              "192.168.7.6:9100"
-              "192.168.7.7:9100"
-              "192.168.7.9:9100"
-              "192.168.7.11:9100"
-              "192.168.7.12:9100"
-              "192.168.7.13:9100"
-              "192.168.7.15:9100"
-              "192.168.7.18:9100"
-              "192.168.7.19:9100"
-              "192.168.7.20:9100"
-              "192.168.7.21:9100"
-            ]; } ];
+            static_configs = [ { targets = map (ip: commons.ips.${ip} + ":9100") ([ "gateway" ] ++ commons.activeContainers); } ];
           }
           {
             job_name = "postgres";
-            static_configs = [ { targets = [ "192.168.7.5:9187" ]; } ];
+            static_configs = [ { targets = [ "${commons.ips.postgres}:9187" ]; } ];
           }
           {
             job_name = "miniflux";
-            static_configs = [ { targets = [ "192.168.7.6:8080" ]; } ];
+            static_configs = [ { targets = [ "${commons.ips.miniflux}:8080" ]; } ];
           }
           {
             job_name = "ipmi";
@@ -363,7 +369,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
                 separator = ";";
                 regex = ".*";
                 target_label = "__address__";
-                replacement = "192.168.7.7:9290";
+                replacement = "${commons.ips.ipmiprom}:9290";
                 action = "replace";
               }
             ];
@@ -371,22 +377,12 @@ let secrets = (import /etc/nixos/secrets.nix); in
         ];
       };
       networking.firewall.allowedTCPPorts = [ 9090 ];
-      networking.defaultGateway = "192.168.7.1";
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.3"; prefixLength = 24; } ];
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.prometheus}"; prefixLength = 24; } ];
     };
   };
 
-  containers.grafana = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
+  containers.grafana = baseContainer // {
+    config = { config, ... }: baseContainerConfig // {
       services.grafana = {
         enable = true;
         addr = "0.0.0.0";
@@ -395,23 +391,13 @@ let secrets = (import /etc/nixos/secrets.nix); in
         security.adminUser = "michcioperz";
       };
       networking.firewall.allowedTCPPorts = [ 3000 ];
-      networking.defaultGateway = "192.168.7.1";
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.4"; prefixLength = 24; } ];
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.grafana}"; prefixLength = 24; } ];
       networking.nameservers = [ "1.1.1.1" ];
     };
   };
 
-  containers.postgres = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
+  containers.postgres = baseContainer // {
+    config = { config, pkgs, ... }: baseContainerConfig // {
       services.postgresql = {
         enable = true;
         package = pkgs.postgresql_11;
@@ -428,8 +414,8 @@ let secrets = (import /etc/nixos/secrets.nix); in
           }
         ];
         authentication = ''
-          host miniflux miniflux 192.168.7.6/32 trust
-          host hydra hydra 192.168.7.8/32 trust
+          host miniflux miniflux ${commons.ips.miniflux}/32 trust
+          host hydra hydra ${commons.ips.hydra}/32 trust
         '';
       };
       services.prometheus.exporters.postgres = {
@@ -437,30 +423,20 @@ let secrets = (import /etc/nixos/secrets.nix); in
         openFirewall = true;
       };
       networking.firewall.allowedTCPPorts = [ 5432 ];
-      networking.defaultGateway = "192.168.7.1";
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.5"; prefixLength = 24; } ];
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.postgres}"; prefixLength = 24; } ];
     };
   };
 
-  containers.miniflux = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
+  containers.miniflux = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
       services.miniflux = {
         enable = true;
         config = lib.mkForce {
-          DATABASE_URL = "user=miniflux dbname=miniflux sslmode=disable host=192.168.7.5";
+          DATABASE_URL = "user=miniflux dbname=miniflux sslmode=disable host=${commons.ips.postgres}";
           PORT = "8080";
           BASE_URL = "https://miniflux.hinata.iscute.ovh/";
           METRICS_COLLECTOR = "1";
-          METRICS_ALLOWED_NETWORKS = "192.168.7.3/32";
+          METRICS_ALLOWED_NETWORKS = "${commons.ips.prometheus}/32";
           RUN_MIGRATIONS = "1";
         };
       };
@@ -476,23 +452,13 @@ let secrets = (import /etc/nixos/secrets.nix); in
       services.postgresql.enable = lib.mkForce false;
       services.postgresql.package = pkgs.postgresql_11;
       networking.firewall.allowedTCPPorts = [ 8080 ];
-      networking.defaultGateway = "192.168.7.1";
       networking.nameservers = ["1.1.1.1"];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.6"; prefixLength = 24; } ];
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.miniflux}"; prefixLength = 24; } ];
     };
   };
 
-  containers.ipmiprom = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
+  containers.ipmiprom = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
       environment.etc."ipmi_exporter.yml" = {
         text = ''{"modules": {"default": { "user": "${secrets.ipmi.user}", "pass": "${secrets.ipmi.pass}", "privilege": "user", "driver": "LAN_2_0", "collectors": ["bmc", "ipmi", "chassis"]}}}'';
       };
@@ -512,23 +478,18 @@ let secrets = (import /etc/nixos/secrets.nix); in
         };
       };
       networking.firewall.allowedTCPPorts = [ 9290 ];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.7"; prefixLength = 24; } ];
-      networking.defaultGateway = "192.168.7.1";
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.ipmiprom}"; prefixLength = 24; } ];
     };
   };
 
-  #containers.hydra = {
-  # timeoutStartSec = "2min";
-  #  privateNetwork = true;
-  #  hostBridge = "br0";
-  #  autoStart = true;
-  #  config = { config, lib, pkgs, ... }: {
+  #containers.hydra = baseContainer // {
+  #  config = { config, lib, pkgs, ... }: baseContainerConfig // {
   #    services.hydra = {
   #      enable = true;
   #      hydraURL = "https://hydra.hinata.iscute.ovh";
   #      notificationSender = "hydra@hinata.iscute.ovh";
   #      useSubstitutes = true;
-  #      dbi = "dbi:Pg:dbname=hydra;user=hydra;host=192.168.7.5;";
+  #      dbi = "dbi:Pg:dbname=hydra;user=hydra;host=${commons.ips.postgres};";
   #    };
   #    nix.buildMachines = [
   #      {
@@ -539,28 +500,18 @@ let secrets = (import /etc/nixos/secrets.nix); in
   #      }
   #    ];
   #    networking.firewall.allowedTCPPorts = [ 3000 ];
-  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.8"; prefixLength = 24; } ];
-  #    networking.defaultGateway = "192.168.7.1";
+  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.hydra}"; prefixLength = 24; } ];
   #    networking.nameservers = [ "1.1.1.1" ];
   #  };
   #};
 
-  containers.stagit = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
+  containers.stagit = baseContainer // {
     bindMounts = {
       "/git" = { hostPath = "/home/michcioperz/git"; isReadOnly = true; };
       "/stagit" = { hostPath = "/home/michcioperz/stagit"; isReadOnly = false; };
     };
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.9"; prefixLength = 24; } ];
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.stagit}"; prefixLength = 24; } ];
       systemd.services = lib.foldl' (x: y: x // y) {} (map (repoName: {
         "rustagit-${repoName}" = {
           wantedBy = [ "multi-user.target" ];
@@ -574,19 +525,15 @@ let secrets = (import /etc/nixos/secrets.nix); in
     };
   };
 
-  #containers.sccache = {
-  #  timeoutStartSec = "2min";
-  #  privateNetwork = true;
-  #  hostBridge = "br0";
-  #  autoStart = false;
+  #containers.sccache = baseContainer // {
   #  forwardPorts = [
   #    { containerPort = 10600; hostPort = 10600; protocol = "tcp"; }
   #    { containerPort = 10501; hostPort = 10501; protocol = "tcp"; }
   #  ];
-  #  config = { config, lib, pkgs, ... }: {
+  #  config = { config, lib, pkgs, ... }: baseContainerConfig // {
   #    environment.etc."sccache-scheduler.toml" = {
   #      text = ''
-  #        public_addr = "192.168.7.10:10600"
+  #        public_addr = "${commons.ips.sccache}:10600"
   #        [client_auth]
   #        type = "token"
   #        token = "${secrets.sccache.schedulerToken}"
@@ -598,8 +545,8 @@ let secrets = (import /etc/nixos/secrets.nix); in
   #    environment.etc."sccache-server.toml" = {
   #      text = ''
   #        cache_dir = "/tmp/toolchains"
-  #        public_addr = "192.168.7.10:10501"
-  #        scheduler_url = "http://192.168.7.10:10600"
+  #        public_addr = "${commons.ips.sccache}:10501"
+  #        scheduler_url = "http://${commons.ips.sccache}:10600"
   #        [builder]
   #        type = "overlay"
   #        build_dir = "/tmp/build"
@@ -632,26 +579,16 @@ let secrets = (import /etc/nixos/secrets.nix); in
   #      };
   #    };
   #    networking.firewall.allowedTCPPorts = [ 10600 10501 ];
-  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.10"; prefixLength = 24; } ];
-  #    networking.defaultGateway = "192.168.7.1";
+  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.sccache}"; prefixLength = 24; } ];
   #    networking.nameservers = [ "1.1.1.1" ];
   #  };
   #};
 
-  containers.mqtt = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
+  containers.mqtt = baseContainer // {
     forwardPorts = [
       { containerPort = 1883; hostPort = 1883; protocol = "tcp"; }
     ];
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
       services.mosquitto = {
         enable = true;
         checkPasswords = true;
@@ -679,30 +616,19 @@ let secrets = (import /etc/nixos/secrets.nix); in
       #};
       #systemd.services.mosquitto.serviceConfig.User = lib.mkForce "root";
       networking.firewall.allowedTCPPorts = [ 1883 ];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.11"; prefixLength = 24; } ];
-      networking.defaultGateway = "192.168.7.1";
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.mqtt}"; prefixLength = 24; } ];
     };
   };
 
-  containers.rns = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
+  containers.rns = baseContainer // {
     forwardPorts = [
       { containerPort = 8000; hostPort = 13370; protocol = "tcp"; }
     ];
     bindMounts = {
       "/tank" = { hostPath = "/tank"; isReadOnly = true; };
     };
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.12"; prefixLength = 24; } ];
-      networking.defaultGateway = "192.168.7.1";
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.rns}"; prefixLength = 24; } ];
       networking.nameservers = ["1.1.1.1"];
       networking.firewall.allowedTCPPorts = [ 8000 ];
       services.icecast = {
@@ -738,7 +664,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
             RestartSec = "180";
             ExecStart = pkgs.writeScript "nowyswiatstream" ''
               #!${pkgs.runtimeShell}
-              ${pkgs.umiarkonowy}/bin/umiarkowanie-nowy-swiat tcp://192.168.7.11:1883 radiopush ${secrets.mqtt.radiopushPassword} https://stream.nowyswiat.online/aac radiopush/nowyswiat >/dev/null''; # | ${pkgs.ffmpeg}/bin/ffmpeg -i - -c:a libopus -vbr on -b:a 32k -content_type audio/ogg -vn -f ogg icecast://source:${secrets.icecast.sourcePassword}@127.0.0.1:8000/rns.opus
+              ${pkgs.umiarkonowy}/bin/umiarkowanie-nowy-swiat tcp://${commons.ips.mqtt}:1883 radiopush ${secrets.mqtt.radiopushPassword} https://stream.nowyswiat.online/aac radiopush/nowyswiat >/dev/null''; # | ${pkgs.ffmpeg}/bin/ffmpeg -i - -c:a libopus -vbr on -b:a 32k -content_type audio/ogg -vn -f ogg icecast://source:${secrets.icecast.sourcePassword}@127.0.0.1:8000/rns.opus
           };
       };
       systemd.services."umiarkohonk" = {
@@ -749,7 +675,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
             ExecStart = pkgs.writeScript "nowyswiathonk" ''
               #!${pkgs.runtimeShell}
               token=$(${pkgs.curl}/bin/curl https://honk.hinata.iscute.ovh/dologin -d "username=nowyswiat&password=${secrets.honk.nowyswiatPassword}&gettoken=1")
-              ${pkgs.mosquitto}/bin/mosquitto_sub -h 192.168.7.11 -t radiopush/nowyswiat/StreamTitle -u public -P public | grep --line-buffered -v "Pion i poziom" | while read -r line
+              ${pkgs.mosquitto}/bin/mosquitto_sub -h ${commons.ips.mqtt} -t radiopush/nowyswiat/StreamTitle -u public -P public | grep --line-buffered -v "Pion i poziom" | while read -r line
               do
                 ${pkgs.curl}/bin/curl https://honk.hinata.iscute.ovh/api -d token="$token" -d action=honk --data-urlencode noise="$line"
               done
@@ -758,19 +684,9 @@ let secrets = (import /etc/nixos/secrets.nix); in
       };
     };
   };
-  containers.scoobideria = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.13"; prefixLength = 24; } ];
-      networking.defaultGateway = "192.168.7.1";
+  containers.scoobideria = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.scoobideria}"; prefixLength = 24; } ];
       networking.nameservers = ["1.1.1.1"];
       systemd.services.scoobideria = {
         wantedBy = [ "multi-user.target" ];
@@ -783,14 +699,9 @@ let secrets = (import /etc/nixos/secrets.nix); in
       };
     };
   };
-  #containers.grocy = {
-  #  timeoutStartSec = "2min";
-  #  privateNetwork = true;
-  #  hostBridge = "br0";
-  #  autoStart = true;
-  #  config = { config, lib, pkgs, ... }: {
-  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.14"; prefixLength = 24; } ];
-  #    networking.defaultGateway = "192.168.7.1";
+  #containers.grocy = baseContainer // {
+  #  config = { config, lib, pkgs, ... }: baseContainerConfig // {
+  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.grocy}"; prefixLength = 24; } ];
   #    networking.nameservers = ["1.1.1.1"];
   #    networking.firewall.allowedTCPPorts = [ 80 ];
   #    services.grocy = {
@@ -805,20 +716,10 @@ let secrets = (import /etc/nixos/secrets.nix); in
   #    };
   #  };
   #};
-  containers.bitlbee = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.15"; prefixLength = 24; } ];
+  containers.bitlbee = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.bitlbee}"; prefixLength = 24; } ];
       networking.firewall.allowedTCPPorts = [ 6667 ];
-      networking.defaultGateway = "192.168.7.1";
       networking.nameservers = ["1.1.1.1"];
       services.bitlbee = {
         enable = true;
@@ -830,15 +731,10 @@ let secrets = (import /etc/nixos/secrets.nix); in
       };
     };
   };
-  # containers.bookwyrm = {
-  #   timeoutStartSec = "2min";
-  #   privateNetwork = true;
-  #   hostBridge = "br0";
-  #   autoStart = true;
-  #   config = { config, lib, pkgs, ... }: {
-  #     networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.17"; prefixLength = 24; } ];
+  # containers.bookwyrm = baseContainer // {
+  #   config = { config, lib, pkgs, ... }: baseContainerConfig // {
+  #     networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.bookwyrm}"; prefixLength = 24; } ];
   #     networking.firewall.allowedTCPPorts = [ 8000 8888 ];
-  #     networking.defaultGateway = "192.168.7.1";
   #     networking.nameservers = ["1.1.1.1"];
   #     systemd.services.bookwyrmcelery = {
   #       wants = [ "network.target" "redis.service" ];
@@ -871,43 +767,29 @@ let secrets = (import /etc/nixos/secrets.nix); in
   # };
 
   #nixpkgs.config.allowUnfree = true;
-  #containers.teamfo = {
-  #  timeoutStartSec = "2min";
-  #  privateNetwork = true;
-  #  hostBridge = "br0";
-  #  autoStart = true;
+  #containers.teamfo = baseContainer // {
   #  forwardPorts = [
   #    { containerPort = 27015; hostPort = 27015; protocol = "tcp"; }
   #    { containerPort = 27015; hostPort = 27015; protocol = "udp"; }
   #    { containerPort = 27020; hostPort = 27020; protocol = "udp"; }
   #  ];
-  #  config = { config, lib, pkgs, ... }: {
+  #  config = { config, lib, pkgs, ... }: baseContainerConfig // {
   #    nixpkgs.config.allowUnfree = true;
   #    environment.systemPackages = with pkgs; [
   #      steamPackages.steamcmd
   #    ];
   #    users.users.gameserver = {
   #    };
-  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.16"; prefixLength = 24; } ];
+  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.teamfo}"; prefixLength = 24; } ];
   #    networking.firewall.allowedTCPPorts = [ 27015 ];
   #    networking.firewall.allowedUDPPorts = [ 27015 27020 ];
   #  };
   #};
 
-  containers.honk = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.18"; prefixLength = 24; } ];
+  containers.honk = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.honk}"; prefixLength = 24; } ];
       networking.firewall.allowedTCPPorts = [ 8000 ];
-      networking.defaultGateway = "192.168.7.1";
       networking.nameservers = ["1.1.1.1"];
       systemd.services.honk = {
         wants = [ "network.target" ];
@@ -926,19 +808,9 @@ let secrets = (import /etc/nixos/secrets.nix); in
       };
     };
   };
-  containers.radyj = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.19"; prefixLength = 24; } ];
-      networking.defaultGateway = "192.168.7.1";
+  containers.radyj = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.radyj}"; prefixLength = 24; } ];
       networking.nameservers = ["1.1.1.1"];
       networking.firewall.allowedTCPPorts = [ 8000 ];
       systemd.services.radyj = {
@@ -951,22 +823,12 @@ let secrets = (import /etc/nixos/secrets.nix); in
       };
     };
   };
-  containers.influxdb = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
+  containers.influxdb = baseContainer // {
     forwardPorts = [
       { containerPort = 8086; hostPort = 8086; protocol = "tcp"; }
     ];
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.20"; prefixLength = 24; } ];
-      networking.defaultGateway = "192.168.7.1";
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.influxdb}"; prefixLength = 24; } ];
       networking.nameservers = ["1.1.1.1"];
       networking.firewall.allowedTCPPorts = [ 8086 ];
       services.influxdb = {
@@ -974,19 +836,9 @@ let secrets = (import /etc/nixos/secrets.nix); in
       };
     };
   };
-  containers.meili = {
-    timeoutStartSec = "2min";
-    privateNetwork = true;
-    hostBridge = "br0";
-    autoStart = true;
-    config = { config, lib, pkgs, ... }: {
-      services.prometheus.exporters.node = {
-        enable = true;
-        openFirewall = true;
-        enabledCollectors = [ "systemd" ];
-      };
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "192.168.7.21"; prefixLength = 24; } ];
-      networking.defaultGateway = "192.168.7.1";
+  containers.meili = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.meili}"; prefixLength = 24; } ];
       #networking.nameservers = ["1.1.1.1"];
       networking.firewall.allowedTCPPorts = [ 7700 ];
       systemd.services.meilisearch = {
