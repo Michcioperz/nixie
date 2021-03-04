@@ -1,4 +1,3 @@
-{ config, pkgs, ... }:
 let
   secrets = (import /etc/nixos/secrets.nix);
   commons = {
@@ -33,15 +32,32 @@ let
     hostBridge = "br0";
     autoStart = true;
   };
-  baseContainerConfig = {
-    networking.defaultGateway = commons.ips.gateway;
-    services.prometheus.exporters.node = {
-      enable = true;
-      openFirewall = true;
-      enabledCollectors = [ "systemd" ];
+  baseContainerConfig = { name, dns ? false, tcp ? [], udp ? [], ... }: config:
+    assert !(config?networking);
+    config // {
+      networking = {
+        defaultGateway = commons.ips.gateway;
+        nameservers = if dns then [ "1.1.1.1" ] else [];
+        firewall = {
+          allowedTCPPorts = tcp;
+          allowedUDPPorts = udp;
+        };
+        interfaces.eth0.ipv4.addresses = [ { address = commons.ips.${name}; prefixLength = 24; } ];
+      };
+      services = ({ services ? {}, ... }: services // {
+        prometheus = ({ prometheus ? {}, ... }: prometheus // {
+          exporters = ({ exporters ? {}, ... }: exporters // {
+            node = ({ node ? {}, ... }: {
+              enable = true;
+              openFirewall = true;
+              enabledCollectors = [ "systemd" ];
+            } // node) exporters;
+          }) prometheus;
+        }) services;
+      }) config;
     };
-  };
 in
+{ config, pkgs, ... }:
 {
   imports =
     [
@@ -143,7 +159,7 @@ in
       "/tank" = { hostPath = "/tank"; isReadOnly = true; };
       #"/nsu" = { hostPath = "/home/michcioperz/nsu"; isReadOnly = true; };
     };
-    config = { config, pkgs, ... }: baseContainerConfig // {
+    config = { config, pkgs, ... }: baseContainerConfig { name = "nginx"; dns = true; tcp = [80 443 6697]; } {
       environment.etc."tank_ca.crt".text = builtins.readFile "/etc/tank_ca.crt";
       security.acme.email = "acme.hinata@iscute.ovh";
       security.acme.acceptTerms = true;
@@ -166,16 +182,16 @@ in
               proxyPass = "http://${commons.ips.rns}:8000";
             };
           };
-	  "nixpkgs.hinata.iscute.ovh" = {
-	    enableACME = true;
-	    forceSSL = true;
-	    locations."/indexes" = {
-	      proxyPass = "http://${commons.ips.meili}:7700";
-	    };
-	    locations."/" = {
-	      root = "/tank/nixpkgs-ui";
-	    };
-	  };
+          "nixpkgs.hinata.iscute.ovh" = {
+            enableACME = true;
+            forceSSL = true;
+            locations."/indexes" = {
+              proxyPass = "http://${commons.ips.meili}:7700";
+            };
+            locations."/" = {
+              root = "/tank/nixpkgs-ui";
+            };
+          };
           "0x7f.one" = {
             enableACME = true;
             forceSSL = true;
@@ -306,14 +322,11 @@ in
         enable = true;
         openFirewall = true;
       };
-      networking.firewall.allowedTCPPorts = [ 80 443 6697 ];
-      networking.nameservers = ["1.1.1.1"];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = commons.ips.nginx; prefixLength = 24; } ];
     };
   };
 
   containers.prometheus = baseContainer // {
-    config = { config, ... }: baseContainerConfig // {
+    config = { config, ... }: baseContainerConfig { name = "prometheus"; tcp = [9090]; } {
       services.prometheus = {
         enable = true;
         port = 9090;
@@ -342,6 +355,10 @@ in
           {
             job_name = "miniflux";
             static_configs = [ { targets = [ "${commons.ips.miniflux}:8080" ]; } ];
+          }
+          {
+            job_name = "icecast";
+            static_configs = [ { targets = [ "${commons.ips.rns}:9146" ]; } ];
           }
           {
             job_name = "ipmi";
@@ -376,13 +393,11 @@ in
           }
         ];
       };
-      networking.firewall.allowedTCPPorts = [ 9090 ];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.prometheus}"; prefixLength = 24; } ];
     };
   };
 
   containers.grafana = baseContainer // {
-    config = { config, ... }: baseContainerConfig // {
+    config = { config, ... }: baseContainerConfig { name = "grafana"; dns = true; tcp = [3000]; } {
       services.grafana = {
         enable = true;
         addr = "0.0.0.0";
@@ -390,14 +405,11 @@ in
         rootUrl = "https://grafana.hinata.iscute.ovh/";
         security.adminUser = "michcioperz";
       };
-      networking.firewall.allowedTCPPorts = [ 3000 ];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.grafana}"; prefixLength = 24; } ];
-      networking.nameservers = [ "1.1.1.1" ];
     };
   };
 
   containers.postgres = baseContainer // {
-    config = { config, pkgs, ... }: baseContainerConfig // {
+    config = { config, pkgs, ... }: baseContainerConfig { name = "postgres"; tcp = [5432]; } {
       services.postgresql = {
         enable = true;
         package = pkgs.postgresql_11;
@@ -422,13 +434,11 @@ in
         enable = true;
         openFirewall = true;
       };
-      networking.firewall.allowedTCPPorts = [ 5432 ];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.postgres}"; prefixLength = 24; } ];
     };
   };
 
   containers.miniflux = baseContainer // {
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "miniflux"; dns = true; tcp = [8080]; } {
       services.miniflux = {
         enable = true;
         config = lib.mkForce {
@@ -451,14 +461,11 @@ in
       };
       services.postgresql.enable = lib.mkForce false;
       services.postgresql.package = pkgs.postgresql_11;
-      networking.firewall.allowedTCPPorts = [ 8080 ];
-      networking.nameservers = ["1.1.1.1"];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.miniflux}"; prefixLength = 24; } ];
     };
   };
 
   containers.ipmiprom = baseContainer // {
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "ipmiprom"; tcp = [9290]; } {
       environment.etc."ipmi_exporter.yml" = {
         text = ''{"modules": {"default": { "user": "${secrets.ipmi.user}", "pass": "${secrets.ipmi.pass}", "privilege": "user", "driver": "LAN_2_0", "collectors": ["bmc", "ipmi", "chassis"]}}}'';
       };
@@ -477,13 +484,11 @@ in
           '';
         };
       };
-      networking.firewall.allowedTCPPorts = [ 9290 ];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.ipmiprom}"; prefixLength = 24; } ];
     };
   };
 
   #containers.hydra = baseContainer // {
-  #  config = { config, lib, pkgs, ... }: baseContainerConfig // {
+  #  config = { config, lib, pkgs, ... }: baseContainerConfig { name = "hydra"; dns = true; tcp = [3000]; } {
   #    services.hydra = {
   #      enable = true;
   #      hydraURL = "https://hydra.hinata.iscute.ovh";
@@ -499,9 +504,6 @@ in
   #        hostName = "localhost";
   #      }
   #    ];
-  #    networking.firewall.allowedTCPPorts = [ 3000 ];
-  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.hydra}"; prefixLength = 24; } ];
-  #    networking.nameservers = [ "1.1.1.1" ];
   #  };
   #};
 
@@ -510,8 +512,7 @@ in
       "/git" = { hostPath = "/home/michcioperz/git"; isReadOnly = true; };
       "/stagit" = { hostPath = "/home/michcioperz/stagit"; isReadOnly = false; };
     };
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.stagit}"; prefixLength = 24; } ];
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "stagit"; } {
       systemd.services = lib.foldl' (x: y: x // y) {} (map (repoName: {
         "rustagit-${repoName}" = {
           wantedBy = [ "multi-user.target" ];
@@ -530,7 +531,7 @@ in
   #    { containerPort = 10600; hostPort = 10600; protocol = "tcp"; }
   #    { containerPort = 10501; hostPort = 10501; protocol = "tcp"; }
   #  ];
-  #  config = { config, lib, pkgs, ... }: baseContainerConfig // {
+  #  config = { config, lib, pkgs, ... }: baseContainerConfig { name = "sccache"; dns = true; tcp = [10600 10501]; } {
   #    environment.etc."sccache-scheduler.toml" = {
   #      text = ''
   #        public_addr = "${commons.ips.sccache}:10600"
@@ -578,9 +579,6 @@ in
   #        ExecStart = ''${pkgs.sccache-dist}/bin/sccache-dist server --config /etc/sccache-server.toml'';
   #      };
   #    };
-  #    networking.firewall.allowedTCPPorts = [ 10600 10501 ];
-  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.sccache}"; prefixLength = 24; } ];
-  #    networking.nameservers = [ "1.1.1.1" ];
   #  };
   #};
 
@@ -588,7 +586,7 @@ in
     forwardPorts = [
       { containerPort = 1883; hostPort = 1883; protocol = "tcp"; }
     ];
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "mqtt"; tcp = [1883]; } {
       services.mosquitto = {
         enable = true;
         checkPasswords = true;
@@ -615,8 +613,6 @@ in
       #  plugins = [ "rabbitmq_web_mqtt" "rabbitmq_mqtt" ];
       #};
       #systemd.services.mosquitto.serviceConfig.User = lib.mkForce "root";
-      networking.firewall.allowedTCPPorts = [ 1883 ];
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.mqtt}"; prefixLength = 24; } ];
     };
   };
 
@@ -627,10 +623,7 @@ in
     bindMounts = {
       "/tank" = { hostPath = "/tank"; isReadOnly = true; };
     };
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.rns}"; prefixLength = 24; } ];
-      networking.nameservers = ["1.1.1.1"];
-      networking.firewall.allowedTCPPorts = [ 8000 ];
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "rns"; dns = true; tcp = [8000 9146]; } {
       services.icecast = {
         enable = true;
         hostname = "www.metro.bieszczady.pl";
@@ -642,6 +635,19 @@ in
           <source-password>${secrets.icecast.sourcePassword}</source-password>
         </authentication>
         '';
+      };
+      systemd.services.icecast-exporter = {
+        wants = [ "network-online.target" ];
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          Restart = "always";
+          PrivateTmp = true;
+          WorkingDirectory = "/tmp";
+          ExecStart = ''
+            ${pkgs.icecast-exporter}/bin/icecast_exporter \
+              --web.listen-address :9146 --icecast.time-format "Mon, 02 Jan 2006 15:04:05 -0700"
+          '';
+        };
       };
       services.liquidsoap.streams.comfy = pkgs.writeScript "comfy.liq" ''
         #!${pkgs.liquidsoap}/bin/liquidsoap
@@ -685,9 +691,7 @@ in
     };
   };
   containers.scoobideria = baseContainer // {
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.scoobideria}"; prefixLength = 24; } ];
-      networking.nameservers = ["1.1.1.1"];
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "scoobideria"; dns = true; } {
       systemd.services.scoobideria = {
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
@@ -700,10 +704,7 @@ in
     };
   };
   #containers.grocy = baseContainer // {
-  #  config = { config, lib, pkgs, ... }: baseContainerConfig // {
-  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.grocy}"; prefixLength = 24; } ];
-  #    networking.nameservers = ["1.1.1.1"];
-  #    networking.firewall.allowedTCPPorts = [ 80 ];
+  #  config = { config, lib, pkgs, ... }: baseContainerConfig { name = "grocy"; dns = true; tcp = [80]; } {
   #    services.grocy = {
   #      enable = true;
   #      hostName = "grocy.hinata.iscute.ovh";
@@ -717,10 +718,7 @@ in
   #  };
   #};
   containers.bitlbee = baseContainer // {
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.bitlbee}"; prefixLength = 24; } ];
-      networking.firewall.allowedTCPPorts = [ 6667 ];
-      networking.nameservers = ["1.1.1.1"];
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "bitlbee"; dns = true; tcp = [6667]; } {
       services.bitlbee = {
         enable = true;
         hostName = "bitlbee.hinata.iscute.ovh";
@@ -732,10 +730,7 @@ in
     };
   };
   # containers.bookwyrm = baseContainer // {
-  #   config = { config, lib, pkgs, ... }: baseContainerConfig // {
-  #     networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.bookwyrm}"; prefixLength = 24; } ];
-  #     networking.firewall.allowedTCPPorts = [ 8000 8888 ];
-  #     networking.nameservers = ["1.1.1.1"];
+  #   config = { config, lib, pkgs, ... }: baseContainerConfig { name = "bookwyrm"; dns = true; tcp = [8000 8888]; } {
   #     systemd.services.bookwyrmcelery = {
   #       wants = [ "network.target" "redis.service" ];
   #       wantedBy = [ "multi-user.target" ];
@@ -766,31 +761,8 @@ in
   #   };
   # };
 
-  #nixpkgs.config.allowUnfree = true;
-  #containers.teamfo = baseContainer // {
-  #  forwardPorts = [
-  #    { containerPort = 27015; hostPort = 27015; protocol = "tcp"; }
-  #    { containerPort = 27015; hostPort = 27015; protocol = "udp"; }
-  #    { containerPort = 27020; hostPort = 27020; protocol = "udp"; }
-  #  ];
-  #  config = { config, lib, pkgs, ... }: baseContainerConfig // {
-  #    nixpkgs.config.allowUnfree = true;
-  #    environment.systemPackages = with pkgs; [
-  #      steamPackages.steamcmd
-  #    ];
-  #    users.users.gameserver = {
-  #    };
-  #    networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.teamfo}"; prefixLength = 24; } ];
-  #    networking.firewall.allowedTCPPorts = [ 27015 ];
-  #    networking.firewall.allowedUDPPorts = [ 27015 27020 ];
-  #  };
-  #};
-
   containers.honk = baseContainer // {
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.honk}"; prefixLength = 24; } ];
-      networking.firewall.allowedTCPPorts = [ 8000 ];
-      networking.nameservers = ["1.1.1.1"];
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "honk"; dns = true; tcp = [8000]; } {
       systemd.services.honk = {
         wants = [ "network.target" ];
         wantedBy = [ "multi-user.target" ];
@@ -809,10 +781,7 @@ in
     };
   };
   containers.radyj = baseContainer // {
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.radyj}"; prefixLength = 24; } ];
-      networking.nameservers = ["1.1.1.1"];
-      networking.firewall.allowedTCPPorts = [ 8000 ];
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "radyj"; dns = true; tcp = [8000]; } {
       systemd.services.radyj = {
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
@@ -827,26 +796,20 @@ in
     forwardPorts = [
       { containerPort = 8086; hostPort = 8086; protocol = "tcp"; }
     ];
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.influxdb}"; prefixLength = 24; } ];
-      networking.nameservers = ["1.1.1.1"];
-      networking.firewall.allowedTCPPorts = [ 8086 ];
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "influxdb"; dns = true; tcp = [8086]; } {
       services.influxdb = {
         enable = true;
       };
     };
   };
   containers.meili = baseContainer // {
-    config = { config, lib, pkgs, ... }: baseContainerConfig // {
-      networking.interfaces.eth0.ipv4.addresses = [ { address = "${commons.ips.meili}"; prefixLength = 24; } ];
-      #networking.nameservers = ["1.1.1.1"];
-      networking.firewall.allowedTCPPorts = [ 7700 ];
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "meili"; tcp = [7700]; } {
       systemd.services.meilisearch = {
         wantedBy = [ "multi-user.target" ];
         serviceConfig = {
           Restart = "always";
           RestartSec = "15";
-	  User = "meilisearch";
+          User = "meilisearch";
           StateDirectory = ["meilisearch"];
           ExecStart = ''${pkgs.meilisearch-bin}/bin/meilisearch --db-path /var/lib/meilisearch --http-addr 0.0.0.0:7700 --master-key ${secrets.meilisearch.masterKey} --env production'';
         };
