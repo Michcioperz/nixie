@@ -10,16 +10,6 @@ let secrets = (import /etc/nixos/secrets.nix); in
     ];
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
   boot.kernelPackages = pkgs.linuxPackages_zen;
-  boot.kernelPatches = [{
-    name = "custom-config";
-    patch = null;
-    extraConfig = ''
-      CC_OPTIMIZE_FOR_PERFORMANCE_O3 y
-      CC_OPTIMIZE_FOR_PERFORMANCE n
-      MNATIVE y
-      GENERIC_CPU n
-    '';
-  }];
   boot.loader.grub = {
     device = "/dev/sda";
     memtest86.enable = true;
