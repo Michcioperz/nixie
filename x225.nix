@@ -32,7 +32,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
     python3 nodejs rustc cargo rustfmt direnv
     lsd ripgrep tokei fd bat gitAndTools.delta httplz
     pass pass-otp git gnupg lutris watchman
-    ncspot-git mpv youtube-dl strawberryProprietary
+    ncspot-git mpv youtube-dl strawberryProprietary ffmpeg-full
     quasselClient tdesktop mumble pavucontrol bitwarden bitwarden-cli
     firefoxNoGtkTheme libreoffice transmission-qt thunderbird
     antibody workrave cargo-edit gimp pulseaudio feh ffmpeg git-cola gnome3.meld
@@ -46,6 +46,16 @@ let secrets = (import /etc/nixos/secrets.nix); in
       phases = ["unpackPhase" "installPhase"];
       installPhase = "cp -r library $out";
     }}'';
+  };
+  fileSystems."/home/michcioperz/t" = {
+    device = "//192.168.2.4/media";
+    fsType = "cifs";
+    options = [ "rw" "vers=1.0" "guest" "uid=1000" "noposix" "x-systemd.automount" "x-systemd.idle-timeout=60" "x-systemd.device-timeout=5s" "x-systemd.mount-timeout=5s" "noauto" ];
+  };
+  fileSystems."/home/michcioperz/backup" = {
+    device = "//192.168.2.4/backup";
+    fsType = "cifs";
+    options = [ "rw" "vers=1.0" "guest" "uid=1000" "noposix" "x-systemd.automount" "x-systemd.idle-timeout=60" "x-systemd.device-timeout=5s" "x-systemd.mount-timeout=5s" "noauto" ];
   };
   fonts = {
     fonts = with pkgs; [
@@ -83,7 +93,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   #  internalIPs = ["192.168.1.0/24"];
   #};
   networking.networkmanager.enable = true;
-  networking.wireguard.enable = true;
+  networking.wireguard.enable = false;
   networking.wireguard.interfaces = {
     wg112 = {
       ips = ["192.168.112.54/24"];
