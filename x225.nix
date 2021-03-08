@@ -4,8 +4,8 @@ let secrets = (import /etc/nixos/secrets.nix); in
   imports =
     [ # Include the results of the hardware scan.
       /etc/nixos/hardware-configuration.nix
-      "${builtins.fetchGit { url = "https://github.com/NixOS/nixos-hardware.git"; }}/lenovo/thinkpad/x230"
-      "${builtins.fetchGit { url = "https://github.com/NixOS/nixos-hardware.git"; }}/common/pc/hdd"
+      ./nixos-hardware/lenovo/thinkpad/x230
+      ./nixos-hardware/common/pc/ssd
       ./common.nix
     ];
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
