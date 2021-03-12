@@ -663,15 +663,15 @@ in
         #!${pkgs.liquidsoap}/bin/liquidsoap
         set("log.stdout", true)
         rain = single("/tank/RainyMood.mp3")
-        music = playlist("/tank/slow", reload_mode="rounds", reload=1, mode="randomize")
+        music = playlist("/tank/normslow", reload_mode="rounds", reload=1, mode="randomize")
         radio = add([music, rain])
         input = radio
         password = "${secrets.icecast.sourcePassword}"
         title = "Stacja Techniczno-(Postojowa-w-deszczu)"
         description = "comfy vibes to winter hibernate to"
         genre = "comf"
-        output.icecast(%mp3(bitrate=256), mount="/stp.mp3", host="127.0.0.1", port=8000, password=password, public=false, name=title, description=description, genre=genre, input)
-        output.icecast(%opus(bitrate=64), mount="/stp.opus", host="127.0.0.1", port=8000, password=password, public=false, name=title, description=description, genre=genre, input)
+        output.icecast(%mp3(bitrate=128), mount="/stp.mp3", host="127.0.0.1", port=8000, password=password, public=false, name=title, description=description, genre=genre, input)
+        output.icecast(%opus(bitrate=32), mount="/stp.opus", host="127.0.0.1", port=8000, password=password, public=false, name=title, description=description, genre=genre, input)
       '';
       systemd.services."umiarkowanie-nowy-swiat" = {
           wantedBy = [ "multi-user.target" ];
