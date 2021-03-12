@@ -125,7 +125,8 @@ in
     rootBackup = {
       compression = "zstd";
       encryption.mode = "keyfile-blake2";
-      exclude = [ "/nix" "/tank" ];
+      encryption.passphrase = "";
+      exclude = [ "/nix" "/tank" "/sys" "/proc" "/dev" "/lost+found" "/run" "/tmp" ];
       paths = "/";
       repo = "ysvg35ac@ysvg35ac.repo.borgbase.com:repo";
     };
