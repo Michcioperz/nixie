@@ -121,6 +121,16 @@ in
     wget neovim htop git tmux nncp
   ];
 
+  services.borgbackup.jobs = {
+    rootBackup = {
+      compression = "zstd";
+      encryption.mode = "keyfile-blake2";
+      exclude = [ "/nix" "/tank" ];
+      paths = "/";
+      repo = "ysvg35ac@ysvg35ac.repo.borgbase.com:repo"
+    };
+  };
+
   services.openssh.enable = true;
   services.openssh.permitRootLogin = "prohibit-password";
   services.openssh.passwordAuthentication = false;
