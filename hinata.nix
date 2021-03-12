@@ -127,7 +127,7 @@ in
       encryption.mode = "keyfile-blake2";
       exclude = [ "/nix" "/tank" ];
       paths = "/";
-      repo = "ysvg35ac@ysvg35ac.repo.borgbase.com:repo"
+      repo = "ysvg35ac@ysvg35ac.repo.borgbase.com:repo";
     };
   };
 
