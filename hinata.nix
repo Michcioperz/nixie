@@ -811,6 +811,9 @@ in
     config = { config, lib, pkgs, ... }: baseContainerConfig { name = "influxdb"; dns = true; tcp = [8086]; } {
       services.influxdb = {
         enable = true;
+        extraConfig = {
+          http.log-enabled = false;
+        };
       };
     };
   };
