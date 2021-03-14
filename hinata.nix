@@ -25,6 +25,9 @@ let
       influxdb    = "192.168.7.20";
       meili       = "192.168.7.21";
     };
+    domains = {
+      honk = "honk.hinata.iscute.ovh";
+    };
   };
   baseContainer = {
     timeoutStartSec = "2min";
@@ -238,7 +241,7 @@ in
               extraConfig = ''add_header Cache-Control "public, immutable, max-age=3600"; proxy_cache radyj; proxy_cache_lock on; proxy_cache_revalidate off; proxy_cache_valid 1h;'';
             };
           };
-          "honk.hinata.iscute.ovh" = {
+          "${commons.domains.honk}" = {
             enableACME = true;
             forceSSL = true;
             locations."/" = {
@@ -692,14 +695,44 @@ in
             RestartSec = "15";
             ExecStart = pkgs.writeScript "nowyswiathonk" ''
               #!${pkgs.runtimeShell}
-              token=$(${pkgs.curl}/bin/curl https://honk.hinata.iscute.ovh/dologin -d "username=nowyswiat&password=${secrets.honk.nowyswiatPassword}&gettoken=1")
+              token=$(${pkgs.curl}/bin/curl https://${commons.domains.honk}/dologin -d "username=nowyswiat&password=${secrets.honk.nowyswiatPassword}&gettoken=1")
               ${pkgs.mosquitto}/bin/mosquitto_sub -h ${commons.ips.mqtt} -t radiopush/nowyswiat/StreamTitle -u public -P public | grep --line-buffered -v "Pion i poziom" | while read -r line
               do
-                ${pkgs.curl}/bin/curl https://honk.hinata.iscute.ovh/api -d token="$token" -d action=honk --data-urlencode noise="$line"
+                ${pkgs.curl}/bin/curl https://${commons.domains.honk}/api -d token="$token" -d action=honk --data-urlencode noise="$line"
               done
             '';
           };
       };
+      services.cron.enable = true;
+      services.cron.systemCronJobs = let
+        solarhonkPython = pkgs.python3.withPackages (ps: [ps.influxdb ps.pytz ps.requests]);
+        solarhonk = pkgs.writeScript "solarhonk" ''
+          #!${pkgs.solarhonkPython}
+          import datetime
+          from influxdb import InfluxDBClient
+          import pytz
+          import requests
+
+          warsaw = pytz.timezone("Europe/Warsaw")
+          now = warsaw.fromutc(datetime.datetime.utcnow())
+          today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+          client = InfluxDBClient(host="${commons.ips.influxdb}", database="prometheus")
+          best_of_today_query = "SELECT last(value) FROM fronius_site_energy_consumption WHERE time_frame = 'day' AND time >= $t GROUP BY time(1d) fill(null) tz('Europe/Warsaw')"
+          best_of_today = next(client.query(best_of_today_query, bind_params={"t": today.isoformat()}).get_points())["last"]
+
+          first_of_best_query = "SELECT first(value) FROM fronius_site_energy_consumption WHERE time_frame = 'day' AND time >= $t AND value = $v tz('Europe/Warsaw')"
+          first_of_best_str = next(client.query(first_of_best_query, bind_params={"t": today.isoformat(), "v": best_of_today}).get_points())["time"]
+          assert first_of_best_str.endswith("Z")
+          first_of_best = pytz.UTC.localize(datetime.datetime.fromisoformat(first_of_best_str[:-1])).astimezone(warsaw)
+
+          token_response = requests.post("https://${commons.domains.honk}/dologin", {"username": "solar", "gettoken": "1", "password": "${secrets.honk.solarPassword}"})
+          token_response.raise_for_status()
+          token = token_response.text.strip()
+
+          requests.post("https://${commons.domains.honk}/api", {"token": token, "action": "honk", "noise": f"Today's photovoltaic production was {best_of_today} watt-hours, according to the last increase in reading from {first_of_best.time()}"}).raise_for_status()
+        '';
+      in [ "0 21 * * * ${solarhonk}" ];
     };
   };
   containers.scoobideria = baseContainer // {
