@@ -707,7 +707,7 @@ in
       services.cron.systemCronJobs = let
         solarhonkPython = pkgs.python3.withPackages (ps: [ps.influxdb ps.pytz ps.requests]);
         solarhonk = pkgs.writeScript "solarhonk" ''
-          #!${pkgs.solarhonkPython}
+          #!${solarhonkPython}/bin/python3
           import datetime
           from influxdb import InfluxDBClient
           import pytz
@@ -720,6 +720,7 @@ in
           client = InfluxDBClient(host="${commons.ips.influxdb}", database="prometheus")
           best_of_today_query = "SELECT last(value) FROM fronius_site_energy_consumption WHERE time_frame = 'day' AND time >= $t GROUP BY time(1d) fill(null) tz('Europe/Warsaw')"
           best_of_today = next(client.query(best_of_today_query, bind_params={"t": today.isoformat()}).get_points())["last"]
+          best_of_today_kwh = best_of_today / 1000
 
           first_of_best_query = "SELECT first(value) FROM fronius_site_energy_consumption WHERE time_frame = 'day' AND time >= $t AND value = $v tz('Europe/Warsaw')"
           first_of_best_str = next(client.query(first_of_best_query, bind_params={"t": today.isoformat(), "v": best_of_today}).get_points())["time"]
@@ -730,7 +731,7 @@ in
           token_response.raise_for_status()
           token = token_response.text.strip()
 
-          requests.post("https://${commons.domains.honk}/api", {"token": token, "action": "honk", "noise": f"Today's photovoltaic production was {best_of_today} watt-hours, according to the last increase in reading from {first_of_best.time()}"}).raise_for_status()
+          requests.post("https://${commons.domains.honk}/api", {"token": token, "action": "honk", "noise": f"Today's photovoltaic production was {best_of_today_kwh:.3f} kilowatt-hours, according to the last increase in reading from {first_of_best.time().strftime('%H:%M')} local time"}).raise_for_status()
         '';
       in [ "0 21 * * * ${solarhonk}" ];
     };
