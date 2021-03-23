@@ -167,6 +167,7 @@ pkgs.neovim.override {
     plug.plugins = with pkgs.vimPlugins; [
       vim-airline
       vim-airline-themes
+      idris-vim
       vim-nix
       zig-vim
       coc-nvim
