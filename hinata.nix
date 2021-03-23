@@ -1,7 +1,7 @@
 let
   secrets = (import /etc/nixos/secrets.nix);
   commons = {
-    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "ipmiprom" "stagit" "mqtt" "rns" "scoobideria" "bitlbee" "honk" "radyj" "influxdb" "meili" ];
+    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "ipmiprom" "stagit" "mqtt" "rns" "scoobideria" "bitlbee" "honk" "radyj" "influxdb" "meili" "powerdns" ];
     ips = {
       gateway     = "192.168.7.1";
       nginx       = "192.168.7.2";
@@ -24,6 +24,7 @@ let
       radyj       = "192.168.7.19";
       influxdb    = "192.168.7.20";
       meili       = "192.168.7.21";
+      powerdns    = "192.168.7.22";
     };
     domains = {
       honk = "honk.hinata.iscute.ovh";
@@ -188,6 +189,7 @@ in
         appendHttpConfig = ''proxy_cache_path /var/cache/nginx/radyj levels=1:2 keys_zone=radyj:10m;'';
         virtualHosts = {
           "www.metro.bieszczady.pl" = {
+            serverAliases = [ "metro.bieszczady.pl" ];
             enableACME = true;
             addSSL = true;
             basicAuth = { "comfy" = secrets.icecast.comfyPassword; };
@@ -375,6 +377,10 @@ in
             static_configs = [ { targets = [ "${commons.ips.rns}:9146" ]; } ];
           }
           {
+            job_name = "powerdns";
+            static_configs = [ { targets = [ "${commons.ips.powerdns}:8081" ]; } ];
+          }
+          {
             job_name = "ipmi";
             metrics_path = "/ipmi";
             scrape_timeout = "30s";
@@ -423,26 +429,14 @@ in
   };
 
   containers.postgres = baseContainer // {
-    config = { config, pkgs, ... }: baseContainerConfig { name = "postgres"; tcp = [5432]; } {
-      services.postgresql = {
+    config = { config, pkgs, lib, ... }: baseContainerConfig { name = "postgres"; tcp = [5432]; } {
+      services.postgresql = let pgservices = [ "miniflux" "hydra" "powerdns" ]; in {
         enable = true;
         package = pkgs.postgresql_11;
         enableTCPIP = true;
-        ensureDatabases = [ "miniflux" "hydra" ];
-        ensureUsers = [
-          {
-            name = "miniflux";
-            ensurePermissions = { "DATABASE miniflux" = "ALL PRIVILEGES"; };
-          }
-          {
-            name = "hydra";
-            ensurePermissions = { "DATABASE hydra" = "ALL PRIVILEGES"; };
-          }
-        ];
-        authentication = ''
-          host miniflux miniflux ${commons.ips.miniflux}/32 trust
-          host hydra hydra ${commons.ips.hydra}/32 trust
-        '';
+        ensureDatabases = pgservices;
+        ensureUsers = map (name: { name = name; ensurePermissions = { "DATABASE ${name}" = "ALL PRIVILEGES"; }; }) pgservices;
+        authentication = lib.strings.concatMapStringsSep "\n" (name: "host ${name} ${name} ${commons.ips."${name}"}/32 trust") pgservices;
       };
       services.prometheus.exporters.postgres = {
         enable = true;
@@ -866,6 +860,29 @@ in
       users.users.meilisearch = {
         home = "/var/lib/meilisearch";
       };
+    };
+  };
+  containers.powerdns = baseContainer // {
+    forwardPorts = [
+      { containerPort = 53; hostPort = 53; protocol = "tcp"; }
+      { containerPort = 53; hostPort = 53; protocol = "udp"; }
+      { containerPort = 8081; hostPort = 8053; protocol = "tcp"; }
+    ];
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "powerdns"; tcp = [53 8081]; udp = [53]; } {
+      services.powerdns.enable = true;
+      services.powerdns.extraConfig = ''
+        expand-alias=yes
+        resolver=1.1.1.1:53
+        launch=gpgsql
+        gpgsql-host=${commons.ips.postgres}
+        gpgsql-user=powerdns
+        gpgsql-dbname=powerdns
+        webserver=yes
+        webserver-address=0.0.0.0
+        webserver-allow-from=192.168.0.0/20
+        api=yes
+        api-key=${secrets.powerdns.api-key}
+      '';
     };
   };
 }
