@@ -537,7 +537,7 @@ in
             ExecStart = ''${pkgs.rustagit}/bin/rustagit /git/${repoName} /stagit/${repoName}'';
           };
         };
-      }) ["ace-atourist" "ggd" "nootnootutils" "apocaholics-anonymous" "hugoblog" "raiwu" "blobomnom" "i3spin" "rustagit" "blocks-hanging-out" "icinga-start-dash" "subaru" "defeederated" "lawn" "uhonker" "falsehoods" "lipszyc" "zorza" "f-harvester" "melty" "flux-circulator" "myne" "umiarkowanie-nowy-swiat" "scoobideria" "wordpirate" "nixie"]);
+      }) ["ace-atourist" "ggd" "nootnootutils" "apocaholics-anonymous" "hugoblog" "raiwu" "blobomnom" "i3spin" "rustagit" "blocks-hanging-out" "icinga-start-dash" "subaru" "defeederated" "lawn" "uhonker" "falsehoods" "lipszyc" "zorza" "f-harvester" "melty" "flux-circulator" "myne" "umiarkowanie-nowy-swiat" "scoobideria" "wordpirate" "nixie" "ecosol_exporter"]);
     };
   };
 
