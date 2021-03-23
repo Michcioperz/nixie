@@ -28,10 +28,10 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
   environment.systemPackages = with pkgs; [
     wget neovim-m314 htop pciutils usbutils aria
-    mupdf pcmanfm xarchiver unzip file xclip ncdu jq
+    mupdf pcmanfm xarchiver unzip file xclip ncdu jq ldns
     python3 nodejs rustc cargo rustfmt go direnv
     lsd ripgrep tokei fd bat gitAndTools.delta httplz
-    pass pass-otp git gnupg lutris watchman
+    pass pass-otp git gnupg lutris watchman obs-studio
     ncspot mpv youtube-dl strawberryProprietary ffmpeg-full projectm blender
     quasselClient tdesktop mumble pavucontrol bitwarden bitwarden-cli
     firefoxNoGtkTheme libreoffice transmission-qt thunderbird
