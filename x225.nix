@@ -28,15 +28,16 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
   environment.systemPackages = with pkgs; [
     wget neovim-m314 htop pciutils usbutils aria
-    mupdf pcmanfm xarchiver
-    python3 nodejs rustc cargo rustfmt direnv
+    mupdf pcmanfm xarchiver unzip file xclip ncdu jq
+    python3 nodejs rustc cargo rustfmt go direnv
     lsd ripgrep tokei fd bat gitAndTools.delta httplz
     pass pass-otp git gnupg lutris watchman
-    ncspot-git mpv youtube-dl strawberryProprietary ffmpeg-full
+    ncspot mpv youtube-dl strawberryProprietary ffmpeg-full projectm blender
     quasselClient tdesktop mumble pavucontrol bitwarden bitwarden-cli
     firefoxNoGtkTheme libreoffice transmission-qt thunderbird
     antibody workrave cargo-edit gimp pulseaudio feh ffmpeg git-cola gnome3.meld
     hicolor-icon-theme gnome3.adwaita-icon-theme gtk-engine-murrine gtk_engines gsettings-desktop-schemas lxappearance
+    python3Packages.black python3Packages.jedi
   ];
   environment.variables = {
     GTK_THEME = "Adwaita-dark";
@@ -50,7 +51,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   fileSystems."/home/michcioperz/t" = {
     device = "//192.168.2.4/media";
     fsType = "cifs";
-    options = [ "rw" "vers=1.0" "guest" "uid=1000" "noposix" "x-systemd.automount" "x-systemd.idle-timeout=60" "x-systemd.device-timeout=5s" "x-systemd.mount-timeout=5s" "noauto" ];
+    options = [ "rw" "vers=1.0" "guest" "uid=1000" "forceuid" "dir_mode=0755" "file_mode=0644" "noposix" "x-systemd.automount" "x-systemd.idle-timeout=60" "x-systemd.device-timeout=5s" "x-systemd.mount-timeout=5s" "noauto" ];
   };
   fileSystems."/home/michcioperz/backup" = {
     device = "//192.168.2.4/backup";
@@ -168,11 +169,6 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
   security.unprivilegedUsernsClone = true;
   # TODO: read more services
-  services.fractalart = {
-    enable = true;
-    width = 1920;
-    height = 1080;
-  };
   services.gvfs.enable = true;
   services.lorri.enable = true;
   services.openssh.enable = true;
