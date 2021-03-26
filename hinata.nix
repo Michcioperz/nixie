@@ -1,7 +1,7 @@
 let
   secrets = (import /etc/nixos/secrets.nix);
   commons = {
-    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "ipmiprom" "stagit" "mqtt" "rns" "scoobideria" "bitlbee" "honk" "radyj" "influxdb" "meili" "powerdns" ];
+    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "ipmiprom" "stagit" "mqtt" "rns" "scoobideria" "bitlbee" "honk" "radyj" "influxdb" "meili" "powerdns" "metro" "icecast" "solarhonk" ];
     ips = {
       gateway     = "192.168.7.1";
       nginx       = "192.168.7.2";
@@ -25,6 +25,9 @@ let
       influxdb    = "192.168.7.20";
       meili       = "192.168.7.21";
       powerdns    = "192.168.7.22";
+      icecast     = "192.168.7.23";
+      metro       = "192.168.7.24";
+      solarhonk   = "192.168.7.25";
     };
     domains = {
       honk = "honk.hinata.iscute.ovh";
@@ -195,7 +198,7 @@ in
             basicAuth = { "comfy" = secrets.icecast.comfyPassword; };
             locations."/" = {
               extraConfig = ''proxy_pass_header Authorization;'';
-              proxyPass = "http://${commons.ips.rns}:8000";
+              proxyPass = "http://${commons.ips.icecast}:8000";
             };
           };
           "nixpkgs.hinata.iscute.ovh" = {
@@ -374,7 +377,7 @@ in
           }
           {
             job_name = "icecast";
-            static_configs = [ { targets = [ "${commons.ips.rns}:9146" ]; } ];
+            static_configs = [ { targets = [ "${commons.ips.icecast}:9146" ]; } ];
           }
           {
             job_name = "powerdns";
@@ -625,14 +628,11 @@ in
     };
   };
 
-  containers.rns = baseContainer // {
+  containers.icecast = baseContainer // {
     forwardPorts = [
       { containerPort = 8000; hostPort = 13370; protocol = "tcp"; }
     ];
-    bindMounts = {
-      "/tank" = { hostPath = "/tank"; isReadOnly = true; };
-    };
-    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "rns"; dns = true; tcp = [8000 9146]; } {
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "icecast"; tcp = [8000 9146]; } {
       services.icecast = {
         enable = true;
         hostname = "www.metro.bieszczady.pl";
@@ -658,6 +658,14 @@ in
           '';
         };
       };
+    };
+  };
+
+  containers.metro = baseContainer // {
+    bindMounts = {
+      "/tank" = { hostPath = "/tank"; isReadOnly = true; };
+    };
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "metro"; } {
       services.liquidsoap.streams.comfy = pkgs.writeScript "comfy.liq" ''
         #!${pkgs.liquidsoap}/bin/liquidsoap
         set("log.stdout", true)
@@ -669,9 +677,14 @@ in
         title = "Stacja Techniczno-(Postojowa-w-deszczu)"
         description = "comfy vibes to winter hibernate to"
         genre = "comf"
-        output.icecast(%mp3(bitrate=128), mount="/stp.mp3", host="127.0.0.1", port=8000, password=password, public=false, name=title, description=description, genre=genre, input)
-        output.icecast(%opus(bitrate=32), mount="/stp.opus", host="127.0.0.1", port=8000, password=password, public=false, name=title, description=description, genre=genre, input)
+        output.icecast(%mp3(bitrate=128), mount="/stp.mp3", host="${commons.ips.icecast}", port=8000, password=password, public=false, name=title, description=description, genre=genre, input)
+        output.icecast(%opus(bitrate=32), mount="/stp.opus", host="${commons.ips.icecast}", port=8000, password=password, public=false, name=title, description=description, genre=genre, input)
       '';
+    };
+  };
+
+  containers.rns = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "rns"; dns = true; } {
       systemd.services."umiarkowanie-nowy-swiat" = {
           wantedBy = [ "multi-user.target" ];
           serviceConfig = {
@@ -697,39 +710,53 @@ in
             '';
           };
       };
-      services.cron.enable = true;
-      services.cron.systemCronJobs = let
-        solarhonkPython = pkgs.python3.withPackages (ps: [ps.influxdb ps.pytz ps.requests]);
-        solarhonk = pkgs.writeScript "solarhonk" ''
-          #!${solarhonkPython}/bin/python3
-          import datetime
-          from influxdb import InfluxDBClient
-          import pytz
-          import requests
-
-          warsaw = pytz.timezone("Europe/Warsaw")
-          now = warsaw.fromutc(datetime.datetime.utcnow())
-          today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
-          client = InfluxDBClient(host="${commons.ips.influxdb}", database="prometheus")
-          best_of_today_query = "SELECT last(value) FROM fronius_site_energy_consumption WHERE time_frame = 'day' AND time >= $t GROUP BY time(1d) fill(null) tz('Europe/Warsaw')"
-          best_of_today = next(client.query(best_of_today_query, bind_params={"t": today.isoformat()}).get_points())["last"]
-          best_of_today_kwh = best_of_today / 1000
-
-          first_of_best_query = "SELECT first(value) FROM fronius_site_energy_consumption WHERE time_frame = 'day' AND time >= $t AND value = $v tz('Europe/Warsaw')"
-          first_of_best_str = next(client.query(first_of_best_query, bind_params={"t": today.isoformat(), "v": best_of_today}).get_points())["time"]
-          assert first_of_best_str.endswith("Z")
-          first_of_best = pytz.UTC.localize(datetime.datetime.fromisoformat(first_of_best_str[:-1])).astimezone(warsaw)
-
-          token_response = requests.post("https://${commons.domains.honk}/dologin", {"username": "solar", "gettoken": "1", "password": "${secrets.honk.solarPassword}"})
-          token_response.raise_for_status()
-          token = token_response.text.strip()
-
-          requests.post("https://${commons.domains.honk}/api", {"token": token, "action": "honk", "noise": f"Today's photovoltaic production was {best_of_today_kwh:.3f} kilowatt-hours, according to the last increase in reading from {first_of_best.time().strftime('%H:%M')} local time"}).raise_for_status()
-        '';
-      in [ "0 21 * * * ${solarhonk}" ];
     };
   };
+
+  containers.solarhonk = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "solarhonk"; dns = true; } {
+      systemd.timers.solarhonk = {
+        wantedBy = [ "timers.target" ];
+        timerConfig.OnCalendar = "21:00:00";
+      };
+      systemd.services.solarhonk = {
+        serviceConfig = {
+          Type = "oneshot";
+          User = "nobody";
+          Group = "nogroup";
+          ExecStart = pkgs.writeScript "solarhonk" ''
+            #!${pkgs.python3.withPackages (ps: [ps.influxdb ps.pytz ps.requests])}/bin/python3
+            import datetime
+            from influxdb import InfluxDBClient
+            import pytz
+            import requests
+
+            warsaw = pytz.timezone("Europe/Warsaw")
+            now = warsaw.fromutc(datetime.datetime.utcnow())
+            today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+            client = InfluxDBClient(host="${commons.ips.influxdb}", database="prometheus")
+            best_of_today_query = "SELECT last(value) FROM fronius_site_energy_consumption WHERE time_frame = 'day' AND time >= $t GROUP BY time(1d) fill(null) tz('Europe/Warsaw')"
+            best_of_today = next(client.query(best_of_today_query, bind_params={"t": today.isoformat()}).get_points())["last"]
+            best_of_today_kwh = best_of_today / 1000
+
+            first_of_best_query = "SELECT first(value) FROM fronius_site_energy_consumption WHERE time_frame = 'day' AND time >= $t AND value = $v tz('Europe/Warsaw')"
+            first_of_best_str = next(client.query(first_of_best_query, bind_params={"t": today.isoformat(), "v": best_of_today}).get_points())["time"]
+            assert first_of_best_str.endswith("Z")
+            first_of_best = pytz.UTC.localize(datetime.datetime.fromisoformat(first_of_best_str[:-1])).astimezone(warsaw)
+
+            token_response = requests.post("https://${commons.domains.honk}/dologin", {"username": "solar", "gettoken": "1", "password": "${secrets.honk.solarPassword}"})
+            token_response.raise_for_status()
+            token = token_response.text.strip()
+
+            requests.post("https://${commons.domains.honk}/api", {"token": token, "action": "honk", "noise": f"Today's photovoltaic production was {best_of_today_kwh:.3f} kilowatt-hours, according to the last increase in reading from {first_of_best.time().strftime('%H:%M')} local time"}).raise_for_status()
+          '';
+        };
+      };
+    };
+  };
+
+
   containers.scoobideria = baseContainer // {
     config = { config, lib, pkgs, ... }: baseContainerConfig { name = "scoobideria"; dns = true; } {
       systemd.services.scoobideria = {
