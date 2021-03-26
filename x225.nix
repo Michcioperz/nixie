@@ -69,6 +69,8 @@ let secrets = (import /etc/nixos/secrets.nix); in
     };
   };
   hardware.enableRedistributableFirmware = true;
+  hardware.bluetooth.enable = true;
+  services.blueman.enable = true;
   hardware.nitrokey.enable = true;
   hardware.opengl.driSupport = true;
   hardware.opengl.driSupport32Bit = true;
@@ -80,6 +82,12 @@ let secrets = (import /etc/nixos/secrets.nix); in
     alsa.support32Bit = true;
     jack.enable = true;
     pulse.enable = true;
+  };
+  services.picom = {
+    vSync = true;
+    fade = true;
+    shadow = true;
+    enable = true;
   };
   i18n.defaultLocale = "en_GB.UTF-8";
   location.latitude = 52.;
