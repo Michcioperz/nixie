@@ -294,20 +294,20 @@ in
             };
             extraConfig = "add_header Cache-Control \"max-age=300, public, immutable\";";
           };
-          #"michcioperz.com" = {
-          #  #enableACME = true;
-          #  #forceSSL = true;
-          #  locations."/" = {
-          #    root = "${pkgs.meekchoppes}/share/meekchoppes/en";
-          #  };
-          #};
-          #"ijestfajnie.pl" = {
-          #  #enableACME = true;
-          #  #forceSSL = true;
-          #  locations."/" = {
-          #    root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
-          #  };
-          #};
+          "michcioperz.com" = {
+            enableACME = true;
+            forceSSL = true;
+            locations."/" = {
+              root = "${pkgs.meekchoppes}/share/meekchoppes/en";
+            };
+          };
+          "ijestfajnie.pl" = {
+            #enableACME = true;
+            #forceSSL = true;
+            locations."/" = {
+              root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
+            };
+          };
         };
         appendConfig = let cfg = config.services.nginx; in ''
           stream {

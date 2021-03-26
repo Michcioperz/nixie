@@ -5,15 +5,16 @@ stdenv.mkDerivation {
   src = fetchgit {
     url = "https://git.hinata.iscute.ovh/hugoblog/";
     rev = "refs/heads/main";
-    sha256 = "1a3mg8ll06l7iw5zsw0jjs9cznxfx1skc5k3vgaakb7bifqzrjs3";
+    sha256 = "0czxzdv8haqqlahvra42b7vpxbl0r8dvqvfmknbxjxdji5hvgqk6";
   };
   meta = with lib; {
     description = "websites of michcioperz";
     homepage = "https://git.hinata.iscute.ovh/hugoblog/";
     platforms = platforms.unix;
   };
+  nativeBuildInputs = [ pkgs.git pkgs.hugo ];
   installPhase = ''
-    ${pkgs.hugo}/bin/hugo --destination $out/share/meekchoppes
+    hugo --destination $out/share/meekchoppes
   '';
   dontBuild = true;
 }
