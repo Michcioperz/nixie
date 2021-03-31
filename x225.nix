@@ -31,14 +31,14 @@ let secrets = (import /etc/nixos/secrets.nix); in
     mupdf pcmanfm xarchiver unzip file xclip ncdu jq ldns
     python3 nodejs rustc cargo rustfmt go direnv
     lsd ripgrep tokei fd bat gitAndTools.delta httplz
-    pass pass-otp git gnupg lutris watchman obs-studio
-    ncspot mpv youtube-dl strawberryProprietary ffmpeg-full projectm blender
+    pass pass-otp git gnupg watchman
+    ncspot mpv youtube-dl strawberryProprietary ffmpeg-full
     quasselClient tdesktop mumble pavucontrol bitwarden bitwarden-cli
-    firefoxNoGtkTheme libreoffice transmission-qt thunderbird
+    firefoxNoGtkTheme transmission-qt thunderbird
     antibody workrave cargo-edit gimp pulseaudio feh ffmpeg git-cola gnome3.meld
     hicolor-icon-theme gnome3.adwaita-icon-theme gtk-engine-murrine gtk_engines gsettings-desktop-schemas lxappearance
     python3Packages.black python3Packages.jedi
-  ];
+  ] ++ [ lutris libreoffice blender obs-studio ghostwriter projectm bitwarden ];
   environment.variables = {
     GTK_THEME = "Adwaita-dark";
     RUST_SRC_PATH = ''${pkgs.stdenv.mkDerivation {
@@ -46,6 +46,8 @@ let secrets = (import /etc/nixos/secrets.nix); in
       inherit (pkgs.rustc.src) name;
       phases = ["unpackPhase" "installPhase"];
       installPhase = "cp -r library $out";
+      preferLocalBuild = true;
+      allowSubstitutes = false;
     }}'';
   };
   fileSystems."/home/michcioperz/t" = {
@@ -85,7 +87,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
   services.picom = {
     vSync = true;
-    fade = true;
+    # fade = true;
     shadow = true;
     enable = true;
   };

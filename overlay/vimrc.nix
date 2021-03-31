@@ -11,7 +11,7 @@ pkgs.neovim.override {
       set signcolumn=yes
       set tabstop=2 softtabstop=2 shiftwidth=2 expandtab
       autocmd FileType go,make setlocal noexpandtab
-      autocmd FileType python setlocal tabstop=4 softtabstop=4 shiftwidth=4 colorcolumn=88
+      autocmd FileType python setlocal tabstop=4 softtabstop=4 shiftwidth=4 colorcolumn=88 foldmethod=indent
       set colorcolumn=80
       set modelines=1
       set number
