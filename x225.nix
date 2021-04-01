@@ -216,10 +216,15 @@ let secrets = (import /etc/nixos/secrets.nix); in
   users.users.michcioperz = {
     isNormalUser = true;
     shell = pkgs.zsh;
-    extraGroups = [ "wheel" "networkmanager" "dialout" "nitrokey" ];
+    extraGroups = [ "wheel" "networkmanager" "dialout" "nitrokey" "lxd" ];
   };
   users.users.builder = {
     isNormalUser = true;
+  };
+  virtualisation.lxc.lxcfs.enable = true;
+  virtualisation.lxd = {
+    enable = true;
+    recommendedSysctlSettings = true;
   };
   system.stateVersion = "20.09";
 }
