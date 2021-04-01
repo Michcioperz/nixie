@@ -64,7 +64,7 @@ let
       }) config;
     };
 in
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 {
   imports =
     [
@@ -110,7 +110,12 @@ in
     keyMap = "pl";
   };
 
-  
+  virtualisation.lxc.lxcfs.enable = true;
+  virtualisation.lxd = {
+    enable = true;
+    recommendedSysctlSettings = true;
+  };
+  security.apparmor.enable = lib.mkOverride 0 false;
 
   users.users.michcioperz = {
     isNormalUser = true;
@@ -125,7 +130,7 @@ in
   nix.trustedUsers = [ "root" "builder" ];
 
   environment.systemPackages = with pkgs; [
-    wget neovim htop git tmux nncp
+    wget neovim htop git tmux
   ];
 
   services.borgbackup.jobs = {
