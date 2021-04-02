@@ -66,6 +66,7 @@ let
 in
 { config, pkgs, lib, ... }:
 {
+  nixpkgs.overlays = [ (import ./unstable-overlay.nix) ];
   imports =
     [
       /etc/nixos/hardware-configuration.nix
@@ -770,7 +771,7 @@ in
           Restart = "always";
           RestartSec = "15";
           Environment = ''TELEGRAM_BOT_TOKEN=${secrets.scoobideria.telegramToken}'';
-          ExecStart = ''${pkgs.scoobideria}/bin/scoobideria'';
+          ExecStart = ''${pkgs.unstable.scoobideria}/bin/scoobideria'';
         };
       };
     };

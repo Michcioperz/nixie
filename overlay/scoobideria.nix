@@ -1,15 +1,19 @@
-{ lib, fetchgit, rustPlatform, pkgs, cmake, pkgconfig, cargo, rustc, openssl }:
-rustPlatform.buildRustPackage rec {
+{ lib, fetchgit, rustPlatform, python3Packages }:
+python3Packages.buildPythonApplication rec {
   pname = "scoobideria";
   version = "0.1.0";
   src = fetchgit {
     url = "https://git.hinata.iscute.ovh/scoobideria/";
     rev = "refs/heads/main";
-    sha256 = "1sh362bnfp5rj3a9y5b3r4f74rf9n66fa2f2n2am8fjnvi2alr9f";
+    sha256 = "1md6am6xy418gw5q7817229yik14hwsz525iixxba9frbzx8bv73";
   };
-  cargoSha256 = "1h9smqvawq34nd70pz5x6g4diy4d9jspsi6lsmpc0vmzj39fd5nk";
-  nativeBuildInputs = [ cmake pkgconfig cargo rustc ];
-  buildInputs = [ openssl ];
+  cargoDeps = rustPlatform.fetchCargoTarball {
+    inherit src;
+    sha256 = "026lwrciv6npwi6lqdkyqdzlg99b677w0gdgkgqj1sgkawiphkpa";
+  };
+  propagatedBuildInputs = with python3Packages; [ python-telegram-bot ];
+  nativeBuildInputs = with rustPlatform; [ cargoSetupHook maturinBuildHook ];
+  doCheck = false;
   meta = with lib; {
     description = "telegram roll bot";
     homepage = "https://git.hinata.iscute.ovh/scoobideria/";
