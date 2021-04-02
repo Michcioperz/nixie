@@ -138,7 +138,7 @@ in
       compression = "zstd";
       encryption.mode = "keyfile-blake2";
       encryption.passphrase = "";
-      exclude = [ "/nix" "/tank" "/sys" "/proc" "/dev" "/lost+found" "/run" "/tmp" ];
+      exclude = [ "/nix" "/tank" "/sys" "/proc" "/dev" "/lost+found" "/run" "/tmp" "/var/lib/lxcfs" "/var/lib/lxc" "/var/lib/lxd" ];
       paths = "/";
       repo = "ysvg35ac@ysvg35ac.repo.borgbase.com:repo";
     };
