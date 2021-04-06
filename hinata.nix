@@ -1,7 +1,7 @@
 let
   secrets = (import /etc/nixos/secrets.nix);
   commons = {
-    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "ipmiprom" "stagit" "mqtt" "rns" "scoobideria" "bitlbee" "honk" "radyj" "influxdb" "meili" "powerdns" "metro" "icecast" "solarhonk" ];
+    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "ipmiprom" "stagit" "mqtt" "rns" "scoobideria" "bitlbee" "honk" "radyj" "influxdb" "meili" "powerdns" "metro" "icecast" "solarhonk" "jenkins" ];
     ips = {
       gateway     = "192.168.7.1";
       nginx       = "192.168.7.2";
@@ -28,6 +28,8 @@ let
       icecast     = "192.168.7.23";
       metro       = "192.168.7.24";
       solarhonk   = "192.168.7.25";
+      jenkins     = "192.168.7.26";
+      docker      = "192.168.7.27";
     };
     domains = {
       honk = "honk.hinata.iscute.ovh";
@@ -116,11 +118,16 @@ in
     enable = true;
     recommendedSysctlSettings = true;
   };
+  virtualisation.libvirtd = {
+    enable = true;
+    qemuPackage = pkgs.qemu_kvm;
+    qemuRunAsRoot = false;
+  };
   security.apparmor.enable = lib.mkOverride 0 false;
 
   users.users.michcioperz = {
     isNormalUser = true;
-    extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
+    extraGroups = [ "libvirtd" "wheel" ]; # Enable ‘sudo’ for the user.
   };
   users.users.builder = {
     isNormalUser = true;
@@ -139,7 +146,7 @@ in
       compression = "zstd";
       encryption.mode = "keyfile-blake2";
       encryption.passphrase = "";
-      exclude = [ "/nix" "/tank" "/sys" "/proc" "/dev" "/lost+found" "/run" "/tmp" "/var/lib/lxcfs" "/var/lib/lxc" "/var/lib/lxd" ];
+      exclude = [ "/nix" "/tank" "/sys" "/proc" "/dev" "/lost+found" "/run" "/tmp" "/var/lib/lxcfs" "/var/lib/lxc" "/var/lib/lxd" "/var/lib/libvirt/images" ];
       paths = "/";
       repo = "ysvg35ac@ysvg35ac.repo.borgbase.com:repo";
     };
@@ -315,6 +322,13 @@ in
             #forceSSL = true;
             locations."/" = {
               root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
+            };
+          };
+          "jenkins.hinata.iscute.ovh" = {
+            enableACME = true;
+            forceSSL = true;
+            locations."/" = {
+              proxyPass = "http://${commons.ips.jenkins}:8080";
             };
           };
         };
@@ -916,6 +930,14 @@ in
         api=yes
         api-key=${secrets.powerdns.api-key}
       '';
+    };
+  };
+  containers.jenkins = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "jenkins"; tcp = [8080]; dns = true; } {
+      services.jenkins = {
+        enable = true;
+        package = pkgs.unstable.jenkins;
+      };
     };
   };
 }
