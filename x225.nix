@@ -28,7 +28,7 @@ let secrets = (import /etc/nixos/secrets.nix); in
   };
   environment.systemPackages = with pkgs; [
     wget neovim-m314 htop pciutils usbutils aria
-    mupdf pcmanfm xarchiver unzip file xclip ncdu jq ldns
+    mupdf pcmanfm xarchiver unzip file xclip ncdu jq ldns sshfs
     python3 nodejs rustc cargo rustfmt go direnv
     lsd ripgrep tokei fd bat gitAndTools.delta httplz
     pass pass-otp git gnupg watchman
