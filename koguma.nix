@@ -1,37 +1,23 @@
 let
   #secrets = (import /etc/nixos/secrets.nix);
   commons = {
-    activeContainers = [ "nginx" "prometheus" ];
+    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "scoobideria" ];
     ips = {
       gateway     = "192.168.7.1";
       nginx       = "192.168.7.2";
       prometheus  = "192.168.7.3";
-      #grafana     = "192.168.7.4";
-      #postgres    = "192.168.7.5";
+      grafana     = "192.168.7.4";
+      postgres    = "192.168.7.5";
       #miniflux    = "192.168.7.6";
-      #ipmiprom    = "192.168.7.7";
-      #hydra       = "192.168.7.8";
-      #stagit      = "192.168.7.9";
-      #sccache     = "192.168.7.10";
-      #mqtt        = "192.168.7.11";
-      #rns         = "192.168.7.12";
-      #scoobideria = "192.168.7.13";
-      #grocy       = "192.168.7.14";
-      #bitlbee     = "192.168.7.15";
-      #teamfo      = "192.168.7.16";
-      #bookwyrm    = "192.168.7.17";
+      scoobideria = "192.168.7.13";
       #honk        = "192.168.7.18";
-      #radyj       = "192.168.7.19";
       #influxdb    = "192.168.7.20";
       #meili       = "192.168.7.21";
-      #powerdns    = "192.168.7.22";
-      #icecast     = "192.168.7.23";
       #metro       = "192.168.7.24";
       #solarhonk   = "192.168.7.25";
-      #jenkins     = "192.168.7.26";
-      #docker      = "192.168.7.27";
     };
     domains = {
+      grafana = "grafana.koguma.iscute.ovh";
       #honk = "honk.hinata.iscute.ovh";
     };
   };
@@ -146,6 +132,28 @@ in
         recommendedOptimisation = true;
         statusPage = true;
         virtualHosts = {
+          "meekchopp.es" = {
+            enableACME = true;
+            forceSSL = true;
+            default = true;
+            locations."/" = {
+              root = let
+                disambiguationSite = pkgs.writeScriptDir "index.html" ''
+                  <html>
+                    <head>
+                      <title>Michcioperz</title>
+                    </head>
+                  <body>
+                    <h1>Michcioperz</h1>
+                    <ul>
+                      <li><a href="https://michcioperz.com">English</a></li>
+                      <li><a href="https://ijestfajnie.pl">Polski</a></li>
+                    </ul>
+                  </body>
+                </html>'';
+              in "${disambiguationSite}";
+            };
+          };
           "michcioperz.com" = {
             enableACME = true;
             forceSSL = true;
@@ -158,6 +166,13 @@ in
             forceSSL = true;
             locations."/" = {
               root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
+            };
+          };
+          "${commons.domains.grafana}" = {
+            enableACME = true;
+            forceSSL = true;
+            locations."/" = {
+              proxyPass = "http://${commons.ips.grafana}:3000";
             };
           };
         };
@@ -187,6 +202,50 @@ in
             static_configs = [ { targets = map (ip: commons.ips.${ip} + ":9100") ([ "gateway" ] ++ commons.activeContainers); } ];
           }
         ];
+      };
+    };
+  };
+
+  containers.grafana = baseContainer // {
+    config = { config, ... }: baseContainerConfig { name = "grafana"; dns = true; tcp = [3000]; } {
+      services.grafana = {
+        enable = true;
+        addr = "0.0.0.0";
+        domain = commons.domains.grafana;
+        rootUrl = "https://${commons.domains.grafana}/";
+        security.adminUser = "michcioperz";
+      };
+    };
+  };
+
+  containers.postgres = baseContainer // {
+    config = { config, pkgs, lib, ... }: baseContainerConfig { name = "postgres"; tcp = [5432]; } {
+      services.postgresql = let pgservices = [ "miniflux" "hydra" "powerdns" ]; in {
+        enable = true;
+        package = pkgs.postgresql_11;
+        enableTCPIP = true;
+        ensureDatabases = pgservices;
+        ensureUsers = map (name: { name = name; ensurePermissions = { "DATABASE ${name}" = "ALL PRIVILEGES"; }; }) pgservices;
+        authentication = lib.strings.concatMapStringsSep "\n" (name: "host ${name} ${name} ${commons.ips."${name}"}/32 trust") pgservices;
+      };
+      services.prometheus.exporters.postgres = {
+        enable = true;
+        openFirewall = true;
+        runAsLocalSuperUser = true;
+      };
+    };
+  };
+
+  containers.scoobideria = baseContainer // {
+    config = { config, lib, pkgs, ... }: baseContainerConfig { name = "scoobideria"; dns = true; } {
+      systemd.services.scoobideria = {
+        wantedBy = [ "multi-user.target" ];
+        serviceConfig = {
+          Restart = "always";
+          RestartSec = "15";
+          Environment = ''TELEGRAM_BOT_TOKEN=${secrets.scoobideria.telegramToken}'';
+          ExecStart = ''${pkgs.unstable.scoobideria}/bin/scoobideria'';
+        };
       };
     };
   };
