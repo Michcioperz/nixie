@@ -1,14 +1,14 @@
 let
-  #secrets = (import /etc/nixos/secrets.nix);
+  secrets = (import /etc/nixos/secrets.nix);
   commons = {
-    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "scoobideria" ];
+    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "scoobideria" ];
     ips = {
       gateway     = "192.168.7.1";
       nginx       = "192.168.7.2";
       prometheus  = "192.168.7.3";
       grafana     = "192.168.7.4";
       postgres    = "192.168.7.5";
-      #miniflux    = "192.168.7.6";
+      miniflux    = "192.168.7.6";
       scoobideria = "192.168.7.13";
       #honk        = "192.168.7.18";
       #influxdb    = "192.168.7.20";
@@ -19,6 +19,7 @@ let
     domains = {
       grafana = "grafana.koguma.iscute.ovh";
       #honk = "honk.hinata.iscute.ovh";
+      miniflux = "miniflux.koguma.iscute.ovh";
     };
   };
   baseContainer = {
@@ -62,11 +63,13 @@ in
       ./common.nix
     ];
 
-  boot.loader.grub.enable = true;
-  boot.loader.grub.version = 2;
-  boot.loader.grub.efiSupport = true;
-  boot.loader.grub.efiInstallAsRemovable = true;
-  boot.loader.grub.device = "/dev/sda";
+  boot.loader.grub = {
+    enable = true;
+    version = 2;
+    device = "/dev/sda";
+    font = null;
+    splashImage = null;
+  };
 
   networking.hostName = "koguma";
   networking.wireless.enable = false;
@@ -103,6 +106,7 @@ in
   };
 
   networking.firewall.allowedTCPPorts = [ 22 80 443 ];
+  networking.firewall.logRefusedConnections = false;
   # networking.firewall.allowedUDPPorts = [ ... ];
 
   # This value determines the NixOS release from which the default
@@ -113,6 +117,55 @@ in
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "20.09"; # Did you read the comment?
 
+
+  containers.grafana = baseContainer // {
+    config = { config, ... }: baseContainerConfig { name = "grafana"; dns = true; tcp = [3000]; } {
+      services.grafana = {
+        enable = true;
+        addr = "0.0.0.0";
+        domain = commons.domains.grafana;
+        rootUrl = "https://${commons.domains.grafana}/";
+        security.adminUser = "michcioperz";
+        provision = {
+          enable = true;
+          datasources = [
+            {
+              name = "prometheus";
+              type = "prometheus";
+              url = "http://${commons.ips.prometheus}:9090";
+            }
+          ];
+        };
+      };
+    };
+  };
+
+  containers.miniflux = baseContainer // {
+    config = { config, pkgs, lib, ... }: baseContainerConfig { name = "miniflux"; tcp = [8080]; dns = true; } {
+      services.miniflux = {
+        enable = true;
+        config = lib.mkForce {
+          DATABASE_URL = "user=miniflux dbname=miniflux sslmode=disable host=${commons.ips.postgres}";
+          PORT = "8080";
+          BASE_URL = "https://${commons.domains.miniflux}/";
+          METRICS_COLLECTOR = "1";
+          METRICS_ALLOWED_NETWORKS = "${commons.ips.prometheus}/32";
+          RUN_MIGRATIONS = "1";
+        };
+      };
+      services.postgresql.enable = lib.mkForce false;
+      services.postgresql.package = pkgs.postgresql_11;
+      systemd.services.miniflux = {
+        requires = lib.mkForce [];
+        after = lib.mkForce [ "network.target" ];
+        serviceConfig = {
+          Restart = "always";
+          RestartSec = "15";
+          ExecStartPre = lib.mkForce "";
+        };
+      };
+    };
+  };
 
   containers.nginx = baseContainer // {
     forwardPorts = [
@@ -138,7 +191,7 @@ in
             default = true;
             locations."/" = {
               root = let
-                disambiguationSite = pkgs.writeScriptDir "index.html" ''
+                disambiguationSite = pkgs.writeTextDir "index.html" ''
                   <html>
                     <head>
                       <title>Michcioperz</title>
@@ -175,11 +228,36 @@ in
               proxyPass = "http://${commons.ips.grafana}:3000";
             };
           };
+          "${commons.domains.miniflux}" = {
+            enableACME = true;
+            forceSSL = true;
+            locations."/" = {
+              proxyPass = "http://${commons.ips.miniflux}:8080";
+            };
+          };
         };
       };
       services.prometheus.exporters.nginx = {
         enable = true;
         openFirewall = true;
+      };
+    };
+  };
+
+  containers.postgres = baseContainer // {
+    config = { config, pkgs, lib, ... }: baseContainerConfig { name = "postgres"; tcp = [5432]; } {
+      services.postgresql = let pgservices = [ "miniflux" ]; in {
+        enable = true;
+        package = pkgs.postgresql_11;
+        enableTCPIP = true;
+        ensureDatabases = pgservices;
+        ensureUsers = map (name: { name = name; ensurePermissions = { "DATABASE ${name}" = "ALL PRIVILEGES"; }; }) pgservices;
+        authentication = lib.strings.concatMapStringsSep "\n" (name: "host ${name} ${name} ${commons.ips."${name}"}/32 trust") pgservices;
+      };
+      services.prometheus.exporters.postgres = {
+        enable = true;
+        openFirewall = true;
+        runAsLocalSuperUser = true;
       };
     };
   };
@@ -195,43 +273,17 @@ in
         #  }
         #];
         scrapeConfigs = [
-	  #TODO: raspi
-	  #TODO: nginx
+          #TODO: raspi
+          #TODO: nginx
           {
             job_name = "node";
             static_configs = [ { targets = map (ip: commons.ips.${ip} + ":9100") ([ "gateway" ] ++ commons.activeContainers); } ];
           }
+          {
+            job_name = "miniflux";
+            static_configs = [ { targets = [ "${commons.ips.miniflux}:8080" ]; } ];
+          }
         ];
-      };
-    };
-  };
-
-  containers.grafana = baseContainer // {
-    config = { config, ... }: baseContainerConfig { name = "grafana"; dns = true; tcp = [3000]; } {
-      services.grafana = {
-        enable = true;
-        addr = "0.0.0.0";
-        domain = commons.domains.grafana;
-        rootUrl = "https://${commons.domains.grafana}/";
-        security.adminUser = "michcioperz";
-      };
-    };
-  };
-
-  containers.postgres = baseContainer // {
-    config = { config, pkgs, lib, ... }: baseContainerConfig { name = "postgres"; tcp = [5432]; } {
-      services.postgresql = let pgservices = [ "miniflux" "hydra" "powerdns" ]; in {
-        enable = true;
-        package = pkgs.postgresql_11;
-        enableTCPIP = true;
-        ensureDatabases = pgservices;
-        ensureUsers = map (name: { name = name; ensurePermissions = { "DATABASE ${name}" = "ALL PRIVILEGES"; }; }) pgservices;
-        authentication = lib.strings.concatMapStringsSep "\n" (name: "host ${name} ${name} ${commons.ips."${name}"}/32 trust") pgservices;
-      };
-      services.prometheus.exporters.postgres = {
-        enable = true;
-        openFirewall = true;
-        runAsLocalSuperUser = true;
       };
     };
   };
