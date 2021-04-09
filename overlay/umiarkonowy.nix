@@ -1,9 +1,10 @@
-{ lib, fetchgit, rustPlatform, pkgs, cmake, pkgconfig, cargo, rustc, openssl }:
+{ lib, fetchFromGitHub, rustPlatform, pkgs, cmake, pkgconfig, cargo, rustc, openssl }:
 rustPlatform.buildRustPackage rec {
   pname = "umiarkonowy";
   version = "0.1.1";
-  src = fetchgit {
-    url = "https://git.hinata.iscute.ovh/umiarkowanie-nowy-swiat/";
+  src = fetchFromGitHub {
+    owner = "michcioperz";
+    repo = "umiarkowanie-nowy-swiat";
     rev = "refs/heads/main";
     sha256 = "1mpn94vyz69sd56513yll4l0r5mf5bcl7rmq53k4z2g6mkd9clbm";
   };
@@ -12,7 +13,7 @@ rustPlatform.buildRustPackage rec {
   buildInputs = [ openssl ];
   meta = with lib; {
     description = "radio proxy";
-    homepage = "https://git.hinata.iscute.ovh/umiarkowanie-nowy-swiat/";
+    homepage = "https://github.com/michcioperz/umiarkowanie-nowy-swiat";
     license = licenses.mit;
     platforms = platforms.unix;
   };

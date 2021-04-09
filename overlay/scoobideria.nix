@@ -1,9 +1,10 @@
-{ lib, fetchgit, rustPlatform, python3Packages }:
+{ lib, fetchFromGitHub, rustPlatform, python3Packages }:
 python3Packages.buildPythonApplication rec {
   pname = "scoobideria";
   version = "0.1.0";
-  src = fetchgit {
-    url = "https://git.hinata.iscute.ovh/scoobideria/";
+  src = fetchFromGitHub {
+    owner = "michcioperz";
+    repo = "scoobideria";
     rev = "refs/heads/main";
     sha256 = "1md6am6xy418gw5q7817229yik14hwsz525iixxba9frbzx8bv73";
   };
@@ -16,7 +17,7 @@ python3Packages.buildPythonApplication rec {
   doCheck = false;
   meta = with lib; {
     description = "telegram roll bot";
-    homepage = "https://git.hinata.iscute.ovh/scoobideria/";
+    homepage = "https://github.com/michcioperz/scoobideria";
     license = licenses.mit;
     platforms = platforms.unix;
   };
