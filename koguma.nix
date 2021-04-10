@@ -81,6 +81,20 @@ in
   networking.nat.internalInterfaces = ["br0"];
   networking.nat.externalInterface = "enp1s0";
 
+  networking.wireguard = {
+    enable = true;
+    interfaces = {
+      wg4 = {
+        privateKey = secrets.wireguard.wg4.privateKey;
+        listenPort = 51820;
+        ips = ["192.168.4.2/24"];
+        peers = [
+          { allowedIPs = ["192.168.4.0/24" "192.168.2.0/24"]; publicKey = "c0LC/vDZXmeJtcqDQ9eLUxHhNJTeluUhvesYgwhzGVI="; }
+        ];
+      };
+    };
+  };
+
   networking.bridges.br0 = { interfaces = []; };
   networking.interfaces.br0 = { ipv4.addresses = [ { address = "${commons.ips.gateway}"; prefixLength = 24; } ]; };
 
@@ -107,7 +121,7 @@ in
 
   networking.firewall.allowedTCPPorts = [ 22 80 443 ];
   networking.firewall.logRefusedConnections = false;
-  # networking.firewall.allowedUDPPorts = [ ... ];
+  networking.firewall.allowedUDPPorts = [ 51820 ];
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
