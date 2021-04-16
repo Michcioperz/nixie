@@ -6,7 +6,7 @@ stdenv.mkDerivation {
     owner = "michcioperz";
     repo = "hugoblog";
     rev = "refs/heads/main";
-    sha256 = "0czxzdv8haqqlahvra42b7vpxbl0r8dvqvfmknbxjxdji5hvgqk6";
+    sha256 = "0m41a0dssypxz1k7ijp4bm9ffb2rrpq7zzkg1m4bi9gd4pk7yxw1";
   };
   meta = with lib; {
     description = "websites of michcioperz";
