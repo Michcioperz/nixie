@@ -1,7 +1,7 @@
 let
   secrets = (import /etc/nixos/secrets.nix);
   commons = {
-    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "scoobideria" "influxdb" "telegraf" "cmemu" ];
+    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "scoobideria" "influxdb" "telegraf" "cmemu" "owncast" ];
     ips = {
       gateway     = "192.168.7.1";
       nginx       = "192.168.7.2";
@@ -17,11 +17,13 @@ let
       #solarhonk   = "192.168.7.25";
       telegraf    = "192.168.7.28";
       cmemu       = "192.168.7.29";
+      owncast     = "192.168.7.30";
     };
     domains = {
       grafana = "grafana.koguma.iscute.ovh";
       #honk = "honk.hinata.iscute.ovh";
       miniflux = "miniflux.koguma.iscute.ovh";
+      owncast = "owncast.koguma.iscute.ovh";
     };
   };
   baseContainer = {
@@ -330,6 +332,30 @@ in
       services.prometheus.exporters.nginx = {
         enable = true;
         openFirewall = true;
+      };
+    };
+  };
+
+  containers.owncast = baseContainer // {
+    config = { config, pkgs, lib, ... }: baseContainerConfig { name = "owncast"; tcp = [ 1935 8080 ]; } {
+      users.users.owncast = { isSystemUser = true; };
+      systemd.services.owncast = {
+        wantedBy = ["default.target"];
+        path = [ pkgs.ffmpeg pkgs.bash pkgs.which ];
+        script = ''
+          ${pkgs.owncast}/bin/owncast -database /var/lib/owncast/owncast.db
+        '';
+        preStart = ''
+          cp --no-preserve=mode -r ${pkgs.owncast.src}/* /var/lib/owncast/
+        '';
+        serviceConfig = {
+          User = "owncast";
+          Group = "nogroup";
+          Restart = "always";
+          RestartSec = "15";
+          StateDirectory = ["owncast"];
+          WorkingDirectory = "/var/lib/owncast";
+        };
       };
     };
   };

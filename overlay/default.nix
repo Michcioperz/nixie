@@ -44,6 +44,7 @@ self: super:
   scoobideria = super.callPackage ./scoobideria.nix { };
   sccache-dist = super.callPackage ./sccache-dist.nix { };
   honk = super.callPackage ./honk.nix { };
+  owncast = super.callPackage ./owncast.nix { };
   czy-piec-siedem = super.callPackage ./czy-piec-siedem.nix { };
   vim-selenized = super.callPackage ./vim-selenized.nix { };
   neovim-m314 = super.callPackage ./vimrc.nix { };
