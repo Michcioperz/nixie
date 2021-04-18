@@ -327,6 +327,14 @@ in
               proxyPass = "http://${commons.ips.miniflux}:8080";
             };
           };
+          "${commons.domains.owncast}" = {
+            enableACME = true;
+            forceSSL = true;
+            locations."/" = {
+              proxyPass = "http://${commons.ips.owncast}:8080";
+              proxyWebsockets = true;
+            };
+          };
         };
       };
       services.prometheus.exporters.nginx = {
@@ -337,7 +345,7 @@ in
   };
 
   containers.owncast = baseContainer // {
-    config = { config, pkgs, lib, ... }: baseContainerConfig { name = "owncast"; tcp = [ 1935 8080 ]; } {
+    config = { config, pkgs, lib, ... }: baseContainerConfig { name = "owncast"; tcp = [ 1935 8080 ]; dns = true; } {
       users.users.owncast = { isSystemUser = true; };
       systemd.services.owncast = {
         wantedBy = ["default.target"];
