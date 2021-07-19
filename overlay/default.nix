@@ -51,4 +51,5 @@ self: super:
   i3spin = super.callPackage ./i3spin.nix { };
   nncp = super.callPackage ./nncp.nix {};
   meilisearch-bin = super.callPackage ./meilisearch-bin.nix {};
+  metro-bieszczady-frontend = super.callPackage ./metro-bieszczady-frontend.nix {};
 }

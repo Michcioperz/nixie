@@ -1,14 +1,14 @@
 { lib, buildGoModule, fetchFromGitHub, ffmpeg }:
 buildGoModule rec {
   pname = "owncast";
-  version = "0.0.6";
+  version = "0.0.7";
   src = fetchFromGitHub {
     owner = "owncast";
     repo = "owncast";
     rev = "v${version}";
-    sha256 = "0vkh4lb5qp20y476j3w0wrshg0bp8kn496bbhdygw8yv3yra45c6";
+    sha256 = "1mgkkad3asw6c7mrsaxx72zjbxzd4i9l4jk0m2wbhmpxlkf70vff";
   };
-  vendorSha256 = "0m4xqqpxprbgipwg9ixbjl73zbmlwynmzb1hbgrcgnv02g9mzicf";
+  vendorSha256 = "1yljx7yq285z27hzbhpxwvajnarpg333rk0003929dnbk86pq7lc";
   propagatedBuildInputs = [ ffmpeg ];
   meta = with lib; {
     description = "self-hosted video live streaming solution";

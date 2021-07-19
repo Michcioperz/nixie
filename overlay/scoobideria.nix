@@ -10,7 +10,7 @@ python3Packages.buildPythonApplication rec {
   };
   cargoDeps = rustPlatform.fetchCargoTarball {
     inherit src;
-    sha256 = "026lwrciv6npwi6lqdkyqdzlg99b677w0gdgkgqj1sgkawiphkpa";
+    sha256 = "12f4maqfaw60l6apw69kc3llk2ark6gagi0wy398xi7pkvz219hk";
   };
   propagatedBuildInputs = with python3Packages; [ python-telegram-bot ];
   nativeBuildInputs = with rustPlatform; [ cargoSetupHook maturinBuildHook ];
