@@ -2,7 +2,7 @@
 let
   secrets = (import /etc/nixos/secrets.nix);
   commons = {
-    activeContainers = [ "prometheus" "grafana" "postgres" "miniflux" "scoobideria" "owncast" "mosquitto" "matterbridge" "metro-bieszczady-radio" "thelounge" "mastodont" ];
+    activeContainers = [ "prometheus" "grafana" "postgres" "miniflux" "owncast" "mosquitto" "matterbridge" "metro-bieszczady-radio" "thelounge" "mastodont" ];
     ips = {
       gateway     = "192.168.7.1";
       prometheus  = "192.168.7.3";
@@ -10,7 +10,6 @@ let
       postgres    = "192.168.7.5";
       miniflux    = "192.168.7.6";
       mosquitto   = "192.168.7.11";
-      scoobideria = "192.168.7.13";
       owncast     = "192.168.7.30";
       quassel     = "192.168.7.31";
       metro-bieszczady-radio = "192.168.7.32";
@@ -536,20 +535,6 @@ in
         enable = true;
         interfaces = [ "0.0.0.0" ];
         requireSSL = false; # TODO
-      };
-    };
-  };
-
-  containers.scoobideria = baseContainer "scoobideria" {
-    config = { config, ... }: baseContainerConfig { name = "scoobideria"; dns = true; } {
-      systemd.services.scoobideria = {
-        wantedBy = [ "multi-user.target" ];
-        serviceConfig = {
-          Restart = "always";
-          RestartSec = "15";
-          Environment = ''TELEGRAM_BOT_TOKEN=${secrets.scoobideria.telegramToken}'';
-          ExecStart = ''${pkgs.scoobideria}/bin/scoobideria'';
-        };
       };
     };
   };
