@@ -271,7 +271,7 @@ in
           PORT = "8080";
           BASE_URL = "https://${commons.domains.miniflux}/";
           METRICS_COLLECTOR = "1";
-          METRICS_ALLOWED_NETWORKS = "${commons.ips.prometheus}/32,${commons.ips.telegraf}/32";
+          METRICS_ALLOWED_NETWORKS = "${commons.ips.prometheus}/32";
           RUN_MIGRATIONS = "1";
         };
       };
