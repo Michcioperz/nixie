@@ -12,29 +12,19 @@ let
       miniflux    = "192.168.7.6";
       mosquitto   = "192.168.7.11";
       scoobideria = "192.168.7.13";
-      #honk        = "192.168.7.18";
-      influxdb    = "192.168.7.20";
-      #meili       = "192.168.7.21";
-      #metro       = "192.168.7.24";
-      #solarhonk   = "192.168.7.25";
-      telegraf    = "192.168.7.28";
-      cmemu       = "192.168.7.29";
       owncast     = "192.168.7.30";
       quassel     = "192.168.7.31";
       metro-bieszczady-radio = "192.168.7.32";
       matterbridge = "192.168.7.33";
       thelounge = "192.168.7.34";
       mastodont = "192.168.7.35";
-      keycloak = "192.168.7.36";
     };
     domains = {
       grafana = "grafana.koguma.iscute.ovh";
-      #honk = "honk.hinata.iscute.ovh";
       miniflux = "miniflux.koguma.iscute.ovh";
       mosquitto = "mqtt.koguma.iscute.ovh";
       owncast = "owncast.koguma.iscute.ovh";
       thelounge = "lounge.koguma.iscute.ovh";
-      keycloak = "keycloak.koguma.iscute.ovh";
     };
   };
   baseContainer = name: contents: lib.mkIf (builtins.elem name commons.activeContainers) ({
@@ -155,57 +145,6 @@ in
   systemd.services."container@quassel".after = [ "container@postgres.service" ];
   systemd.services."container@miniflux".after = [ "container@postgres.service" ];
 
-  containers.cmemu2 = baseContainer "cmemu" {
-    config = { config, ... }: baseContainerConfig { name = "cmemu"; dns = true; } {
-      users.users.cmemu = {
-        createHome = true;
-        home = "/home/cmemu";
-      };
-      systemd.services."cmemu-nightly@" = let
-        sh = pkgs.buildEnv { name="cmemu-build-env"; paths = [ pkgs.rustup pkgs.git pkgs.gcc pkgs.binutils ]; };
-        start = pkgs.writeScriptBin "cmemu-build" ''
-          #!${pkgs.stdenv.shell} -e
-          export PATH="${sh}/bin:$PATH"
-          ref="$1"
-          upstream="$HOME/playground"
-          foo="$(mktemp -d --tmpdir=$HOME)"
-          ${pkgs.git}/bin/git clone "$upstream" "$foo"
-          ln -sf "$foo" "$HOME/build-root"
-          cd "$HOME/build-root"
-          ${pkgs.git}/bin/git checkout "$ref"
-          cd aj370953/cmemu-framework
-          ln -s "$HOME/target" target
-          ${pkgs.stdenv.shell} -e ./poors-man-ci.sh
-        '';
-      in {
-        conflicts = [ "cmemu-nightly@.service" ];
-        preStart = ''
-          upstream="git@github.com:mimuw-distributed-systems-group/playground"
-          repo="$HOME/playground"
-          mkdir -p "$HOME/.ssh"
-          ${pkgs.openssh}/bin/ssh-keyscan github.com > "$HOME/.ssh/known_hosts"
-          echo "${secrets.cmemu.sshKey}" > "$HOME/.ssh/id_ed25519"
-          chmod 0600 "$HOME/.ssh/id_ed25519"
-          [ -d "$repo" ] || ${pkgs.git}/bin/git clone "$upstream" "$repo"
-          cd "$repo"
-          ${pkgs.git}/bin/git pull --ff-only
-          ${pkgs.rustup}/bin/rustup toolchain add stable --profile minimal --component rustfmt
-          ${pkgs.rustup}/bin/rustup toolchain add nightly --profile minimal --component clippy
-          ${pkgs.rustup}/bin/rustup update
-          mkdir -p "$HOME/target"
-        '';
-        serviceConfig = {
-          Type = "oneshot";
-          User = "cmemu";
-          Group = "nogroup";
-          CPUWeight = "1";
-          IOWeight = "1";
-          ExecStart = "${start}/bin/cmemu-build %i";
-        };
-      };
-    };
-  };
-
   containers.grafana = baseContainer "grafana" {
     config = { config, ... }: baseContainerConfig { name = "grafana"; dns = true; tcp = [3000]; } {
       services.grafana = {
@@ -224,46 +163,6 @@ in
             }
           ];
         };
-      };
-    };
-  };
-
-  containers.influxdb = baseContainer "influxdb" {
-    forwardPorts = [
-      { containerPort = 8086; hostPort = 8086; protocol = "tcp"; }
-    ];
-    config = { config, lib, ... }: baseContainerConfig { name = "influxdb"; dns = true; tcp = [8086]; } {
-      services.influxdb = {
-        enable = true;
-        package = pkgs.unstable.influxdb2;
-        extraConfig = let cfg = config.services.influxdb; in {
-          bolt-path = ''${cfg.dataDir}/influxd.bolt'';
-          engine-path = ''${cfg.dataDir}/engine'';
-          http-bind-address = '':8086'';
-        };
-      };
-      systemd.services.influxdb = {
-        serviceConfig = {
-          Environment = ''INFLUXD_CONFIG_PATH=${(pkgs.writeText "config.json" (builtins.toJSON config.services.influxdb.extraConfig))}'';
-          ExecStart = lib.mkForce ''${config.services.influxdb.package}/bin/influxd'';
-        };
-      };
-    };
-  };
-
-  containers.keycloak = baseContainer "keycloak" {
-    config = { config, ... }: baseContainerConfig { name = "keycloak"; dns = true; tcp = [80]; } {
-      services.keycloak = {
-        enable = true;
-        database = {
-          createLocally = false;
-          host = ''${commons.ips.postgres}'';
-          username = ''keycloak'';
-          type = "postgresql";
-          useSSL = false;
-          passwordFile = pkgs.writeText "pw" "";
-        };
-        frontendUrl = ''https://${commons.domains.keycloak}/auth'';
       };
     };
   };
@@ -528,13 +427,6 @@ in
               '';
             };
           };
-          # "${commons.domains.keycloak}" = {
-          #   enableACME = true;
-          #   forceSSL = true;
-          #   locations."/auth" = {
-          #     proxyPass = "http://${commons.ips.keycloak}:80";
-          #   };
-          # };
           "${commons.domains.thelounge}" = {
             enableACME = true;
             forceSSL = true;
@@ -637,11 +529,6 @@ in
       services.prometheus = {
         enable = true;
         port = 9090;
-        #remoteWrite = [
-        #  {
-        #    #TODO: url = "http://${commons.ips.influxdb}:8086/api/v1/prom/write?db=prometheus";
-        #  }
-        #];
         scrapeConfigs = [
           #TODO: raspi
           #TODO: nginx
@@ -677,46 +564,6 @@ in
           RestartSec = "15";
           Environment = ''TELEGRAM_BOT_TOKEN=${secrets.scoobideria.telegramToken}'';
           ExecStart = ''${pkgs.scoobideria}/bin/scoobideria'';
-        };
-      };
-    };
-  };
-
-  containers.telegraf = baseContainer "telegraf" {
-    config = { config, ... }: baseContainerConfig { name = "telegraf"; } {
-      services.telegraf = {
-        enable = true;
-        package = pkgs.unstable.telegraf;
-        extraConfig = {
-          agent = {
-            interval = "60s";
-            round_interval = true;
-          };
-          inputs = {
-            prometheus = {
-              metric_version = 2;
-              urls = [
-                "http://${commons.ips.nginx}:9113/metrics"
-                "http://${commons.ips.miniflux}:8080/metrics"
-
-                "http://192.168.2.1:9100/metrics" # openwrt
-                "http://192.168.2.13:8876/metrics" # fronius
-                "http://192.168.2.13:8763/metrics" # ecosol
-              ] ++ (map (ip: "http://${commons.ips.${ip}}:9100/metrics") (["gateway"] ++ commons.activeContainers));
-            };
-            #mqtt_consumer = {
-            #  servers = ["tcp://192.168.2.1:1883"];
-            #  topics = ["sensor/#"];
-            #};
-          };
-          outputs = {
-            influxdb_v2 = {
-              urls = [ "http://${commons.ips.influxdb}:8086" ];
-              token = secrets.influxdb.telegrafToken;
-              bucket = "telegraf";
-              organization = "Misunderstanding Overenthusiastic Engineering";
-            };
-          };
         };
       };
     };
