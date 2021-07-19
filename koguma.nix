@@ -490,7 +490,7 @@ in
 
   containers.postgres = baseContainer "postgres" {
     config = { config, lib, ... }: baseContainerConfig { name = "postgres"; tcp = [5432]; } {
-      services.postgresql = let pgservices = [ "miniflux" "quassel" "keycloak" "mastodont" ]; in {
+      services.postgresql = let pgservices = [ "miniflux" "quassel" "mastodont" ]; in {
         enable = true;
         package = pkgs.postgresql_11;
         enableTCPIP = true;
