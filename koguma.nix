@@ -2,10 +2,9 @@
 let
   secrets = (import /etc/nixos/secrets.nix);
   commons = {
-    activeContainers = [ "nginx" "prometheus" "grafana" "postgres" "miniflux" "scoobideria" "owncast" "mosquitto" "matterbridge" "metro-bieszczady-radio" "thelounge" "mastodont" ];
+    activeContainers = [ "prometheus" "grafana" "postgres" "miniflux" "scoobideria" "owncast" "mosquitto" "matterbridge" "metro-bieszczady-radio" "thelounge" "mastodont" ];
     ips = {
       gateway     = "192.168.7.1";
-      nginx       = "192.168.7.2";
       prometheus  = "192.168.7.3";
       grafana     = "192.168.7.4";
       postgres    = "192.168.7.5";
@@ -316,164 +315,151 @@ in
     };
   };
 
-  containers.nginx = baseContainer "nginx" {
-    forwardPorts = [
-      { containerPort = 80; hostPort = 80; protocol = "tcp"; }
-      { containerPort = 443; hostPort = 443; protocol = "tcp"; }
-      { containerPort = 6697; hostPort = 6697; protocol = "tcp"; }
-    ];
-    config = { config, ... }: baseContainerConfig { name = "nginx"; dns = true; tcp = [80 443]; } {
-      security.acme.email = "acme.koguma@iscute.ovh";
-      security.acme.acceptTerms = true;
-      services.nginx = {
-        enable = true;
-        package = pkgs.nginxMainline;
-        recommendedProxySettings = true;
-        recommendedGzipSettings = true;
-        recommendedTlsSettings = true;
-        recommendedOptimisation = true;
-        statusPage = true;
-        virtualHosts = {
-          "cutememe.iscute.ovh" = {
-            enableACME = true;
-            addSSL = true;
-            locations."/" = {
-              root = let
-                cutememe = pkgs.stdenv.mkDerivation {
-                  name = "cutememe";
-                  src = ./cutememe.tar;
-                  buildPhase = "";
-                  installPhase = ''
-                    mkdir -p $out
-                    cp -r * $out/
-                  '';
-                };
-              in "${cutememe}";
-              extraConfig = ''add_header Cache-Control "public, immutable, max-age=604800"; autoindex on;'';
-            };
-	    locations."/aoba/" = {
-	      return = ''410 "nope"'';
-	      extraConfig = ''default_type text/plain;'';
-	    };
-          };
-          "meekchopp.es" = {
-            serverAliases = [ "www.meekchopp.es" ];
-            enableACME = true;
-            forceSSL = true;
-            default = true;
-            locations."/" = {
-              root = let
-                disambiguationSite = pkgs.writeTextDir "index.html" ''
-                  <html>
-                    <head>
-                      <meta charset="UTF-8">
-                      <meta name="viewport" content="width=device-width">
-                      <title>Michcioperz</title>
-                    </head>
-                  <body>
-                    <h1>Michcioperz</h1>
-                    <ul>
-                      <li><a href="https://michcioperz.com">English</a></li>
-                      <li><a href="https://ijestfajnie.pl">Polski</a></li>
-                    </ul>
-                  </body>
-                </html>'';
-              in "${disambiguationSite}";
-            };
-          };
-          "michcioperz.com" = {
-            serverAliases = [ "www.michcioperz.com" ];
-            enableACME = true;
-            forceSSL = true;
-            locations."/" = {
-              root = "${pkgs.meekchoppes}/share/meekchoppes/en";
-            };
-            locations."/assets/" = {
-              extraConfig = ''add_header Cache-Control "public, immutable, max-age=604800";'';
-              root = "${pkgs.meekchoppes}/share/meekchoppes/en";
-            };
-          };
-          "ijestfajnie.pl" = {
-            serverAliases = [ "www.ijestfajnie.pl" ];
-            enableACME = true;
-            forceSSL = true;
-            locations."/" = {
-              root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
-            };
-            locations."/assets/" = {
-              extraConfig = ''add_header Cache-Control "public, immutable, max-age=604800";'';
-              root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
-            };
-          };
-          "metro.bieszczady.pl" = {
-            serverAliases = [ "www.metro.bieszczady.pl" ];
-            enableACME = true;
-            forceSSL = true;
-            locations."/" = {
-              root = "${pkgs.metro-bieszczady-frontend}";
-            };
-            locations."/.well-known/webfinger" = {
-              return = "301 https://mastodon.metro.bieszczady.pl$request_uri";
-            };
-          };
-          "mastodon.metro.bieszczady.pl" = {
-            enableACME = true;
-            forceSSL = true;
-            locations."/" = {
-              proxyPass = "http://${commons.ips.mastodont}:80";
-              proxyWebsockets = true;
-              extraConfig = ''
-                client_max_body_size 128m;
+  security.acme.email = "acme.koguma@iscute.ovh";
+  security.acme.acceptTerms = true;
+  services.nginx = {
+    enable = true;
+    package = pkgs.nginxMainline;
+    recommendedProxySettings = true;
+    recommendedGzipSettings = true;
+    recommendedTlsSettings = true;
+    recommendedOptimisation = true;
+    statusPage = true;
+    virtualHosts = {
+      "cutememe.iscute.ovh" = {
+        enableACME = true;
+        addSSL = true;
+        locations."/" = {
+          root = let
+            cutememe = pkgs.stdenv.mkDerivation {
+              name = "cutememe";
+              src = ./cutememe.tar;
+              buildPhase = "";
+              installPhase = ''
+                mkdir -p $out
+                cp -r * $out/
               '';
             };
-          };
-          "${commons.domains.thelounge}" = {
-            enableACME = true;
-            forceSSL = true;
-            locations."/" = {
-              proxyPass = "http://${commons.ips.thelounge}:9000";
-              proxyWebsockets = true;
-              extraConfig = ''
-                proxy_read_timeout 1d;
-                client_max_body_size 10m;
-              '';
-            };
-          };
-          "${commons.domains.mosquitto}" = {
-            enableACME = true;
-            addSSL = true;
-            locations."/" = {
-              proxyPass = "http://${commons.ips.mosquitto}:9001";
-              proxyWebsockets = true;
-            };
-          };
-          "${commons.domains.grafana}" = {
-            enableACME = true;
-            forceSSL = true;
-            locations."/" = {
-              proxyPass = "http://${commons.ips.grafana}:3000";
-            };
-          };
-          "${commons.domains.miniflux}" = {
-            enableACME = true;
-            forceSSL = true;
-            locations."/" = {
-              proxyPass = "http://${commons.ips.miniflux}:8080";
-            };
-          };
-          "${commons.domains.owncast}" = {
-            enableACME = true;
-            forceSSL = true;
-            locations."/" = {
-              proxyPass = "http://${commons.ips.owncast}:8080";
-              proxyWebsockets = true;
-            };
-          };
+          in "${cutememe}";
+          extraConfig = ''add_header Cache-Control "public, immutable, max-age=604800"; autoindex on;'';
+        };
+        locations."/aoba/" = {
+          return = ''410 "nope"'';
+          extraConfig = ''default_type text/plain;'';
         };
       };
-      services.prometheus.exporters.nginx = {
-        enable = true;
-        openFirewall = true;
+      "meekchopp.es" = {
+        serverAliases = [ "www.meekchopp.es" ];
+        enableACME = true;
+        forceSSL = true;
+        default = true;
+        locations."/" = {
+          root = let
+            disambiguationSite = pkgs.writeTextDir "index.html" ''
+              <html>
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width">
+                  <title>Michcioperz</title>
+                </head>
+              <body>
+                <h1>Michcioperz</h1>
+                <ul>
+                  <li><a href="https://michcioperz.com">English</a></li>
+                  <li><a href="https://ijestfajnie.pl">Polski</a></li>
+                </ul>
+              </body>
+            </html>'';
+          in "${disambiguationSite}";
+        };
+      };
+      "michcioperz.com" = {
+        serverAliases = [ "www.michcioperz.com" ];
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          root = "${pkgs.meekchoppes}/share/meekchoppes/en";
+        };
+        locations."/assets/" = {
+          extraConfig = ''add_header Cache-Control "public, immutable, max-age=604800";'';
+          root = "${pkgs.meekchoppes}/share/meekchoppes/en";
+        };
+      };
+      "ijestfajnie.pl" = {
+        serverAliases = [ "www.ijestfajnie.pl" ];
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
+        };
+        locations."/assets/" = {
+          extraConfig = ''add_header Cache-Control "public, immutable, max-age=604800";'';
+          root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
+        };
+      };
+      "metro.bieszczady.pl" = {
+        serverAliases = [ "www.metro.bieszczady.pl" ];
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          root = "${pkgs.metro-bieszczady-frontend}";
+        };
+        locations."/.well-known/webfinger" = {
+          return = "301 https://mastodon.metro.bieszczady.pl$request_uri";
+        };
+      };
+      "mastodon.metro.bieszczady.pl" = {
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          proxyPass = "http://${commons.ips.mastodont}:80";
+          proxyWebsockets = true;
+          extraConfig = ''
+            client_max_body_size 128m;
+          '';
+        };
+      };
+      "${commons.domains.thelounge}" = {
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          proxyPass = "http://${commons.ips.thelounge}:9000";
+          proxyWebsockets = true;
+          extraConfig = ''
+            proxy_read_timeout 1d;
+            client_max_body_size 10m;
+          '';
+        };
+      };
+      "${commons.domains.mosquitto}" = {
+        enableACME = true;
+        addSSL = true;
+        locations."/" = {
+          proxyPass = "http://${commons.ips.mosquitto}:9001";
+          proxyWebsockets = true;
+        };
+      };
+      "${commons.domains.grafana}" = {
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          proxyPass = "http://${commons.ips.grafana}:3000";
+        };
+      };
+      "${commons.domains.miniflux}" = {
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          proxyPass = "http://${commons.ips.miniflux}:8080";
+        };
+      };
+      "${commons.domains.owncast}" = {
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          proxyPass = "http://${commons.ips.owncast}:8080";
+          proxyWebsockets = true;
+        };
       };
     };
   };
@@ -531,7 +517,6 @@ in
         port = 9090;
         scrapeConfigs = [
           #TODO: raspi
-          #TODO: nginx
           {
             job_name = "node";
             static_configs = [ { targets = map (ip: commons.ips.${ip} + ":9100") ([ "gateway" ] ++ commons.activeContainers); } ];
