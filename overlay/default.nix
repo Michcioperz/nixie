@@ -38,7 +38,6 @@ self: super:
 
   icecast-exporter = super.callPackage ./icecast-exporter.nix { };
   ipmi-exporter = super.callPackage ./ipmi-exporter.nix { };
-  meekchoppes = super.callPackage ./meekchoppes.nix { };
   rustagit = super.callPackage ./rustagit.nix { };
   umiarkonowy = super.callPackage ./umiarkonowy.nix { };
   scoobideria = super.callPackage ./scoobideria.nix { };

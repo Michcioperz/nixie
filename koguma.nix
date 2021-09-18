@@ -2,7 +2,18 @@
 let
   secrets = (import /etc/nixos/secrets.nix);
   commons = {
-    activeContainers = [ "prometheus" "grafana" "postgres" "miniflux" "owncast" "mosquitto" "matterbridge" "metro-bieszczady-radio" "thelounge" "mastodont" ];
+    activeContainers = [
+      "prometheus"
+      "grafana"
+      "postgres"
+      "miniflux"
+      "mosquitto"
+      "matterbridge"
+      "metro-bieszczady-radio"
+      "thelounge"
+      "mastodont"
+      "ttrss"
+    ];
     ips = {
       gateway     = "192.168.7.1";
       prometheus  = "192.168.7.3";
@@ -16,6 +27,7 @@ let
       matterbridge = "192.168.7.33";
       thelounge = "192.168.7.34";
       mastodont = "192.168.7.35";
+      ttrss = "192.168.7.36";
     };
     domains = {
       grafana = "grafana.koguma.iscute.ovh";
@@ -23,7 +35,9 @@ let
       mosquitto = "mqtt.koguma.iscute.ovh";
       owncast = "owncast.koguma.iscute.ovh";
       thelounge = "lounge.koguma.iscute.ovh";
+      ttrss = "ttrss.koguma.iscute.ovh";
     };
+    postgresqlPackage = pkgs.postgresql_11;
   };
   baseContainer = name: contents: lib.mkIf (builtins.elem name commons.activeContainers) ({
     timeoutStartSec = "2min";
@@ -60,6 +74,9 @@ let
 in
 
 {
+  #nixpkgs.overlays = [
+  #  (import ./unstable-overlay.nix)
+  #];
   imports =
     [
       /etc/nixos/hardware-configuration.nix
@@ -275,7 +292,7 @@ in
         };
       };
       services.postgresql.enable = lib.mkForce false;
-      services.postgresql.package = pkgs.postgresql_11;
+      services.postgresql.package = commons.postgresqlPackage;
       systemd.services.miniflux-dbsetup = lib.mkForce {};
       systemd.services.miniflux = {
         requires = lib.mkForce [];
@@ -314,10 +331,19 @@ in
     };
   };
 
-  security.acme.email = "acme.koguma@iscute.ovh";
-  security.acme.acceptTerms = true;
+  security.acme = {
+    email = "acme.koguma@iscute.ovh";
+    acceptTerms = true;
+    certs."michci.ooo" = {
+      extraDomainNames = ["*.michci.ooo"];
+      dnsProvider = "ovh";
+      credentialsFile = "/etc/nixos/michci.ooo.creds";
+      webroot = pkgs.lib.mkForce null;
+    };
+  };
   services.nginx = {
     enable = true;
+    enableReload = true;
     package = pkgs.nginxMainline;
     recommendedProxySettings = true;
     recommendedGzipSettings = true;
@@ -345,6 +371,23 @@ in
         locations."/aoba/" = {
           return = ''410 "nope"'';
           extraConfig = ''default_type text/plain;'';
+        };
+      };
+      "project.michci.ooo" = {
+        forceSSL = true;
+        useACMEHost = "michci.ooo";
+        serverName = "~(?<project>[a-z0-9-]+).michci.ooo";
+        extraConfig = ''disable_symlinks off;'';
+        locations."/" = {
+          root = "/nix/var/nix/profiles/per-user/nginx/michciooo/share/project/$project";
+        };
+      };
+      "michci.ooo" = {
+        enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          root = pkgs.writeTextDir "index.html"  ''
+          '';
         };
       };
       "meekchopp.es" = {
@@ -377,11 +420,11 @@ in
         enableACME = true;
         forceSSL = true;
         locations."/" = {
-          root = "${pkgs.meekchoppes}/share/meekchoppes/en";
+          root = "/nix/var/nix/profiles/per-user/nginx/michciooo/share/meekchoppes/en";
         };
         locations."/assets/" = {
           extraConfig = ''add_header Cache-Control "public, immutable, max-age=604800";'';
-          root = "${pkgs.meekchoppes}/share/meekchoppes/en";
+          root = "/nix/var/nix/profiles/per-user/nginx/michciooo/share/meekchoppes/en";
         };
       };
       "ijestfajnie.pl" = {
@@ -389,11 +432,11 @@ in
         enableACME = true;
         forceSSL = true;
         locations."/" = {
-          root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
+          root = "/nix/var/nix/profiles/per-user/nginx/michciooo/share/meekchoppes/pl";
         };
         locations."/assets/" = {
           extraConfig = ''add_header Cache-Control "public, immutable, max-age=604800";'';
-          root = "${pkgs.meekchoppes}/share/meekchoppes/pl";
+          root = "/nix/var/nix/profiles/per-user/nginx/michciooo/share/meekchoppes/pl";
         };
       };
       "metro.bieszczady.pl" = {
@@ -401,7 +444,7 @@ in
         enableACME = true;
         forceSSL = true;
         locations."/" = {
-          root = "${pkgs.metro-bieszczady-frontend}";
+          root = "/nix/var/nix/profiles/per-user/nginx/michciooo/share/metro-bieszczady-frontend";
         };
         locations."/.well-known/webfinger" = {
           return = "301 https://mastodon.metro.bieszczady.pl$request_uri";
@@ -418,7 +461,7 @@ in
           '';
         };
       };
-      "${commons.domains.thelounge}" = {
+      "${commons.domains.thelounge}" = lib.mkIf (builtins.elem "thelounge" commons.activeContainers) {
         enableACME = true;
         forceSSL = true;
         locations."/" = {
@@ -438,26 +481,33 @@ in
           proxyWebsockets = true;
         };
       };
-      "${commons.domains.grafana}" = {
+      "${commons.domains.grafana}" = lib.mkIf (builtins.elem "grafana" commons.activeContainers) {
         enableACME = true;
         forceSSL = true;
         locations."/" = {
           proxyPass = "http://${commons.ips.grafana}:3000";
         };
       };
-      "${commons.domains.miniflux}" = {
+      "${commons.domains.miniflux}" = lib.mkIf (builtins.elem "miniflux" commons.activeContainers) {
         enableACME = true;
         forceSSL = true;
         locations."/" = {
           proxyPass = "http://${commons.ips.miniflux}:8080";
         };
       };
-      "${commons.domains.owncast}" = {
+      "${commons.domains.owncast}" = lib.mkIf (builtins.elem "owncast" commons.activeContainers) {
         enableACME = true;
         forceSSL = true;
         locations."/" = {
           proxyPass = "http://${commons.ips.owncast}:8080";
           proxyWebsockets = true;
+        };
+      };
+      "${commons.domains.ttrss}" = lib.mkIf (builtins.elem "ttrss" commons.activeContainers) {
+              enableACME = true;
+        forceSSL = true;
+        locations."/" = {
+          proxyPass = "http://${commons.ips.ttrss}:80";
         };
       };
     };
@@ -489,9 +539,9 @@ in
 
   containers.postgres = baseContainer "postgres" {
     config = { config, lib, ... }: baseContainerConfig { name = "postgres"; tcp = [5432]; } {
-      services.postgresql = let pgservices = [ "miniflux" "quassel" "mastodont" ]; in {
+      services.postgresql = let pgservices = [ "miniflux" "quassel" "mastodont" "ttrss" ]; in {
         enable = true;
-        package = pkgs.postgresql_11;
+        package = commons.postgresqlPackage;
         enableTCPIP = true;
         ensureDatabases = pgservices;
         ensureUsers = map (name: { name = name; ensurePermissions = { "DATABASE ${name}" = "ALL PRIVILEGES"; }; }) pgservices;
@@ -557,6 +607,27 @@ in
             };
           };
         };
+      };
+    };
+  };
+
+  containers.ttrss = baseContainer "ttrss" {
+    config = { config, ... }: baseContainerConfig { name = "ttrss"; dns = true; tcp = [ 80 ]; } {
+      services.postgresql.package = commons.postgresqlPackage;
+      services.tt-rss = {
+        enable = true;
+        database = {
+          createLocally = false;
+          host = commons.ips.postgres;
+          name = "ttrss";
+          password = null;
+          type = "pgsql";
+          user = "ttrss";
+        };
+        logDestination = "syslog";
+        pubSubHubbub.enable = true;
+        selfUrlPath = "https://${commons.domains.ttrss}";
+        virtualHost = commons.domains.ttrss;
       };
     };
   };
